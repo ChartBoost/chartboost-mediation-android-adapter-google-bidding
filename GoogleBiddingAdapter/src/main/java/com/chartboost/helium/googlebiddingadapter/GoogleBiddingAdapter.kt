@@ -32,6 +32,13 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class GoogleBiddingAdapter : PartnerAdapter {
+    companion object {
+        /**
+         * The tag used for log messages.
+         */
+        private const val TAG = "[GoogleBiddingAdapter]"
+    }
+
     /**
      * A map of Helium's listeners for the corresponding Helium placements.
      */
@@ -285,16 +292,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return status?.let { it ->
             if (it.initializationState == AdapterStatus.State.READY) {
                 setUpQueryInfoCache()
-                Result.success(LogController.i("Google Bidding successfully initialized."))
+                Result.success(LogController.i("$TAG Google Bidding successfully initialized."))
             } else {
                 LogController.e(
-                    "Google Bidding failed to initialize. Initialization state: " +
+                    "$TAG Google Bidding failed to initialize. Initialization state: " +
                             "$it.initializationState. Description: $it.description\""
                 )
                 Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
             }
         } ?: run {
-            LogController.e("Google Bidding failed to initialize. Initialization status is null.")
+            LogController.e("$TAG Google Bidding failed to initialize. Initialization status is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
         }
     }
@@ -335,7 +342,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 adview.adListener = object : AdListener() {
                     override fun onAdImpression() {
                         listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                            "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                            "$TAG Unable to fire onPartnerAdImpression for Google Bidding adapter."
                         )
 
                         continuation.resume(Result.success(partnerAd))
@@ -346,7 +353,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
-                        LogController.e("Google Bidding banner failed to load: ${adError.message}")
+                        LogController.e("$TAG Failed to load Google Bidding banner: ${adError.message}")
                         continuation.resume(
                             Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                         )
@@ -358,7 +365,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                     override fun onAdClicked() {
                         listener?.onPartnerAdClicked(partnerAd) ?: LogController.d(
-                            "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                            "$TAG Unable to fire onPartnerAdClicked for Google Bidding adapter."
                         )
                     }
 
@@ -423,7 +430,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                            LogController.e("Failed to load interstitial ad: ${loadAdError.message}")
+                            LogController.e("$TAG Failed to load Google Bidding interstitial ad: ${loadAdError.message}")
                             continuation.resume(
                                 Result.failure(HeliumAdException(getHeliumErrorCode(loadAdError.code)))
                             )
@@ -475,7 +482,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                            LogController.e("Failed to load rewarded ad: ${loadAdError.message}")
+                            LogController.e("$TAG Failed to load Google Bidding rewarded ad: ${loadAdError.message}")
                             continuation.resume(
                                 Result.failure(
                                     HeliumAdException(getHeliumErrorCode(loadAdError.code))
@@ -502,7 +509,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
             Result.success(partnerAd)
         } ?: run {
-            LogController.e("Failed to show Google Bidding banner ad. Banner ad is null.")
+            LogController.e("$TAG Failed to show Google Bidding banner ad. Banner ad is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
     }
@@ -520,7 +527,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         partnerAd: PartnerAd
     ): Result<PartnerAd> {
         if (context !is Activity) {
-            LogController.e("Failed to show Google Bidding interstitial ad. Context is not an Activity.")
+            LogController.e("$TAG Failed to show Google Bidding interstitial ad. Context is not an Activity.")
             return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
 
@@ -534,14 +541,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         object : FullScreenContentCallback() {
                             override fun onAdImpression() {
                                 listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                                    "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                    "$TAG Unable to fire onPartnerAdImpression for Google Bidding adapter."
                                 )
                                 continuation.resume(Result.success(partnerAd))
                             }
 
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 LogController.e(
-                                    "Failed to show Google Bidding interstitial ad. " +
+                                    "$TAG Failed to show Google Bidding interstitial ad. " +
                                             "Error: ${adError.message}"
                                 )
                                 continuation.resume(
@@ -556,14 +563,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             override fun onAdDismissedFullScreenContent() {
                                 listener?.onPartnerAdDismissed(partnerAd, null)
                                     ?: LogController.d(
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                        "$TAG Unable to fire onPartnerAdDismissed for Google Bidding adapter."
                                     )
                             }
                         }
                     interstitial.show(context)
                 }
             } ?: run {
-                LogController.e("Failed to show Google Bidding interstitial ad. Ad is null.")
+                LogController.e("$TAG Failed to show Google Bidding interstitial ad. Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
@@ -582,7 +589,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         partnerAd: PartnerAd
     ): Result<PartnerAd> {
         if (context !is Activity) {
-            LogController.e("Failed to show rewarded ad. Context is not an Activity.")
+            LogController.e("$TAG Failed to show Google Bidding rewarded ad. Context is not an Activity.")
             return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
 
@@ -595,13 +602,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
                         override fun onAdImpression() {
                             listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                                "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                "$TAG Unable to fire onPartnerAdImpression for Google Bidding adapter."
                             )
                             continuation.resume(Result.success(partnerAd))
                         }
 
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                            LogController.e("Failed to show rewarded ad. Error: ${adError.message}")
+                            LogController.e("$TAG Failed to show Google Bidding rewarded ad. Error: ${adError.message}")
                             continuation.resume(
                                 Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                             )
@@ -613,7 +620,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdDismissedFullScreenContent() {
                             listener?.onPartnerAdDismissed(partnerAd, null) ?: LogController.d(
-                                "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                "$TAG Unable to fire onPartnerAdDismissed for Google Bidding adapter."
                             )
                         }
                     }
@@ -621,12 +628,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     rewardedAd.show(context) { reward ->
                         listener?.onPartnerAdRewarded(partnerAd, Reward(reward.amount, reward.type))
                             ?: LogController.d(
-                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
+                                "$TAG Unable to fire onPartnerAdRewarded for Google Bidding adapter."
                             )
                     }
                 }
             } ?: run {
-                LogController.e("Failed to show Google Bidding rewarded ad. Ad is null.")
+                LogController.e("$TAG Failed to show Google Bidding rewarded ad. Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
@@ -646,11 +653,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 it.destroy()
                 Result.success(partnerAd)
             } else {
-                LogController.e("Failed to destroy Google Bidding banner ad. Ad is not an AdView.")
+                LogController.e("$TAG Failed to destroy Google Bidding banner ad. Ad is not an AdView.")
                 Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
             }
         } ?: run {
-            LogController.e("Failed to destroy Google Bidding banner ad. Ad is null.")
+            LogController.e("$TAG Failed to destroy Google Bidding banner ad. Ad is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
     }
@@ -691,7 +698,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun getAdInfoIfPresent(request: AdLoadRequest): AdInfo? {
         val adm = request.adm ?: run {
             LogController.e(
-                "Failed to load ${request.format} ad. Google Bidding ad string" +
+                "$TAG Failed to load Google Bidding ${request.format} ad. Ad string" +
                         " is null."
             )
             return null
@@ -700,15 +707,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
         val queryInfo = placementToQueryInfoCache?.let { cache ->
             cache.getIfPresent(request.partnerPlacement) ?: run {
                 LogController.e(
-                    "Failed to load ${request.format} ad. Google Bidding " +
-                            "QueryInfo is null."
+                    "$TAG Failed to load Google Bidding ${request.format} ad. QueryInfo is null."
                 )
                 return null
             }
         } ?: run {
             LogController.e(
-                "Failed to load ${request.format} ad. Google Bidding " +
-                        "QueryInfo cache is null."
+                "$TAG Failed to load Google Bidding ${request.format} ad. QueryInfo cache is null."
             )
             return null
         }
