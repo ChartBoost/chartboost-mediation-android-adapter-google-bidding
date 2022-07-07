@@ -67,7 +67,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         get() = MobileAds.getVersionString()
 
     /**
-     * Get the AdMob adapter version.
+     * Get the Google Bidding adapter version.
      *
      * Note that the version string will be in the format of `Helium.Partner.Partner.Partner.Adapter`,
      * in which `Helium` is the version of the Helium SDK, `Partner` is the major.minor.patch version
@@ -92,13 +92,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Initialize the Google Mobile Ads SDK so that it is ready to request ads.
      *
      * @param context The current [Context].
-     * @param partnerConfiguration Configuration object containing relevant data to initialize AdMob.
+     * @param partnerConfiguration Configuration object containing relevant data to initialize Google Bidding.
      */
     override suspend fun setUp(
         context: Context,
         partnerConfiguration: PartnerConfiguration
     ): Result<Unit> {
-        // Since Helium is the mediator, no need to initialize AdMob's partner SDKs.
+        // Since Helium is the mediator, no need to initialize Google Bidding's partner SDKs.
         // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
         MobileAds.disableMediationAdapterInitialization(context)
 
@@ -139,7 +139,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Notify AdMob of the COPPA subjectivity.
+     * Notify Google Bidding of the COPPA subjectivity.
      */
     override fun setUserSubjectToCoppa(isSubjectToCoppa: Boolean) {
         MobileAds.setRequestConfiguration(
@@ -175,7 +175,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
             .build()
 
-        val adFormat = getAdMobAdFormat(request.format)
+        val adFormat = getGoogleBiddingAdFormat(request.format)
 
         return suspendCoroutine { continuation ->
             CoroutineScope(Dispatchers.IO).launch {
@@ -209,7 +209,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an AdMob ad.
+     * Attempt to load an Google Bidding ad.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
@@ -242,10 +242,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to show the currently loaded AdMob ad.
+     * Attempt to show the currently loaded Google Bidding ad.
      *
      * @param context The current [Context]
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be shown.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
@@ -258,9 +258,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Discard unnecessary AdMob ad objects and release resources.
+     * Discard unnecessary Google Bidding ad objects and release resources.
      *
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be discarded.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be discarded.
      *
      * @return Result.success(PartnerAd) if the ad was successfully discarded, Result.failure(Exception) otherwise.
      */
@@ -285,22 +285,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return status?.let { it ->
             if (it.initializationState == AdapterStatus.State.READY) {
                 setUpQueryInfoCache()
-                Result.success(LogController.i("AdMob successfully initialized."))
+                Result.success(LogController.i("Google Bidding successfully initialized."))
             } else {
                 LogController.e(
-                    "AdMob failed to initialize. Initialization state: " +
+                    "Google Bidding failed to initialize. Initialization state: " +
                             "$it.initializationState. Description: $it.description\""
                 )
                 Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
             }
         } ?: run {
-            LogController.e("AdMob failed to initialize. Initialization status is null.")
+            LogController.e("Google Bidding failed to initialize. Initialization status is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
         }
     }
 
     /**
-     * Attempt to load an AdMob banner on the main thread.
+     * Attempt to load an Google Bidding banner on the main thread.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
@@ -329,13 +329,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     request = request,
                 )
 
-                adview.adSize = getAdMobAdSize(request.size)
+                adview.adSize = getGoogleBiddingAdSize(request.size)
                 adview.adUnitId = request.partnerPlacement
                 adview.loadAd(buildRequest(adInfo.adString, adInfo, request.identifier))
                 adview.adListener = object : AdListener() {
                     override fun onAdImpression() {
                         listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                            "Unable to fire onPartnerAdImpression for AdMob adapter."
+                            "Unable to fire onPartnerAdImpression for Google Bidding adapter."
                         )
 
                         continuation.resume(Result.success(partnerAd))
@@ -346,7 +346,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
-                        LogController.e("AdMob banner failed to load: ${adError.message}")
+                        LogController.e("Google Bidding banner failed to load: ${adError.message}")
                         continuation.resume(
                             Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                         )
@@ -358,7 +358,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                     override fun onAdClicked() {
                         listener?.onPartnerAdClicked(partnerAd) ?: LogController.d(
-                            "Unable to fire onPartnerAdClicked for AdMob adapter."
+                            "Unable to fire onPartnerAdClicked for Google Bidding adapter."
                         )
                     }
 
@@ -371,13 +371,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Find the most appropriate AdMob ad size for the given screen area based on height.
+     * Find the most appropriate Google Bidding ad size for the given screen area based on height.
      *
      * @param size The [Size] to parse for conversion.
      *
-     * @return The AdMob ad size that best matches the given [Size].
+     * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getAdMobAdSize(size: Size?) = when (size?.height) {
+    private fun getGoogleBiddingAdSize(size: Size?) = when (size?.height) {
         in 50 until 90 -> AdSize.BANNER
         in 90 until 250 -> AdSize.LEADERBOARD
         in 250 until DisplayMetrics().heightPixels -> AdSize.MEDIUM_RECTANGLE
@@ -385,7 +385,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an AdMob interstitial on the main thread.
+     * Attempt to load an Google Bidding interstitial on the main thread.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing data to load the ad with.
@@ -435,7 +435,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an AdMob rewarded ad on the main thread.
+     * Attempt to load an Google Bidding rewarded ad on the main thread.
      *
      * @param context The current [Context].
      * @param request The [AdLoadRequest] containing relevant data for the current ad load call.
@@ -489,9 +489,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempted to show an AdMob banner ad on the main thread.
+     * Attempted to show an Google Bidding banner ad on the main thread.
      *
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be shown.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
@@ -502,16 +502,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
             Result.success(partnerAd)
         } ?: run {
-            LogController.e("Failed to show AdMob banner ad. Banner ad is null.")
+            LogController.e("Failed to show Google Bidding banner ad. Banner ad is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
     }
 
     /**
-     * Attempt to show an AdMob interstitial ad on the main thread.
+     * Attempt to show an Google Bidding interstitial ad on the main thread.
      *
      * @param context The current [Context].
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be shown.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
@@ -520,7 +520,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         partnerAd: PartnerAd
     ): Result<PartnerAd> {
         if (context !is Activity) {
-            LogController.e("Failed to show AdMob interstitial ad. Context is not an Activity.")
+            LogController.e("Failed to show Google Bidding interstitial ad. Context is not an Activity.")
             return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
 
@@ -534,14 +534,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         object : FullScreenContentCallback() {
                             override fun onAdImpression() {
                                 listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                                    "Unable to fire onPartnerAdImpression for AdMob adapter."
+                                    "Unable to fire onPartnerAdImpression for Google Bidding adapter."
                                 )
                                 continuation.resume(Result.success(partnerAd))
                             }
 
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 LogController.e(
-                                    "Failed to show AdMob interstitial ad. " +
+                                    "Failed to show Google Bidding interstitial ad. " +
                                             "Error: ${adError.message}"
                                 )
                                 continuation.resume(
@@ -556,24 +556,24 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             override fun onAdDismissedFullScreenContent() {
                                 listener?.onPartnerAdDismissed(partnerAd, null)
                                     ?: LogController.d(
-                                        "Unable to fire onPartnerAdDismissed for AdMob adapter."
+                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
                                     )
                             }
                         }
                     interstitial.show(context)
                 }
             } ?: run {
-                LogController.e("Failed to show AdMob interstitial ad. Ad is null.")
+                LogController.e("Failed to show Google Bidding interstitial ad. Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
     }
 
     /**
-     * Attempt to show an AdMob rewarded ad on the main thread.
+     * Attempt to show an Google Bidding rewarded ad on the main thread.
      *
      * @param context The current [Context].
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be shown.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
@@ -595,7 +595,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
                         override fun onAdImpression() {
                             listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                                "Unable to fire onPartnerAdImpression for AdMob adapter."
+                                "Unable to fire onPartnerAdImpression for Google Bidding adapter."
                             )
                             continuation.resume(Result.success(partnerAd))
                         }
@@ -613,7 +613,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdDismissedFullScreenContent() {
                             listener?.onPartnerAdDismissed(partnerAd, null) ?: LogController.d(
-                                "Unable to fire onPartnerAdDismissed for AdMob adapter."
+                                "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
                             )
                         }
                     }
@@ -621,21 +621,21 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     rewardedAd.show(context) { reward ->
                         listener?.onPartnerAdRewarded(partnerAd, Reward(reward.amount, reward.type))
                             ?: LogController.d(
-                                "Unable to fire onPartnerAdRewarded for AdMob adapter."
+                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
                             )
                     }
                 }
             } ?: run {
-                LogController.e("Failed to show AdMob rewarded ad. Ad is null.")
+                LogController.e("Failed to show Google Bidding rewarded ad. Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
     }
 
     /**
-     * Destroy the current AdMob banner ad.
+     * Destroy the current Google Bidding banner ad.
      *
-     * @param partnerAd The [PartnerAd] object containing the AdMob ad to be destroyed.
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be destroyed.
      *
      * @return Result.success(PartnerAd) if the ad was successfully destroyed, Result.failure(Exception) otherwise.
      */
@@ -646,23 +646,23 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 it.destroy()
                 Result.success(partnerAd)
             } else {
-                LogController.e("Failed to destroy AdMob banner ad. Ad is not an AdView.")
+                LogController.e("Failed to destroy Google Bidding banner ad. Ad is not an AdView.")
                 Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
             }
         } ?: run {
-            LogController.e("Failed to destroy AdMob banner ad. Ad is null.")
+            LogController.e("Failed to destroy Google Bidding banner ad. Ad is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
     }
 
     /**
-     * Get the equivalent AdMob ad format for a given Helium [AdFormat].
+     * Get the equivalent Google Bidding ad format for a given Helium [AdFormat].
      *
      * @param format The Helium [AdFormat] to convert.
      *
-     * @return The equivalent AdMob ad format.
+     * @return The equivalent Google Bidding ad format.
      */
-    private fun getAdMobAdFormat(format: AdFormat) = when (format) {
+    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format) {
         AdFormat.BANNER -> com.google.android.gms.ads.AdFormat.BANNER
         AdFormat.INTERSTITIAL -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
         AdFormat.REWARDED -> com.google.android.gms.ads.AdFormat.REWARDED
@@ -686,7 +686,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param request The [AdLoadRequest] instance containing data about the current ad load call.
      *
-     * @return An [AdInfo] object, if any, containing biddable data for Google Biding.
+     * @return An [AdInfo] object, if any, containing biddable data for Google Bidding.
      */
     private fun getAdInfoIfPresent(request: AdLoadRequest): AdInfo? {
         val adm = request.adm ?: run {
@@ -720,11 +720,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Build an AdMob ad request.
+     * Build an Google Bidding ad request.
      *
      * @param identifier The unique identifier associated with the current ad load call.
      *
-     * @return An AdMob [AdRequest] object.
+     * @return An Google Bidding [AdRequest] object.
      */
     private fun buildRequest(adm: String, adInfo: AdInfo, identifier: String): AdRequest {
         val extras = buildPrivacyConsents()
@@ -741,9 +741,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Build a [Bundle] containing privacy settings for the current ad request for AdMob.
+     * Build a [Bundle] containing privacy settings for the current ad request for Google Bidding.
      *
-     * @return A [Bundle] containing privacy settings for the current ad request for AdMob.
+     * @return A [Bundle] containing privacy settings for the current ad request for Google Bidding.
      */
     private fun buildPrivacyConsents(): Bundle {
         return Bundle().apply {
@@ -758,9 +758,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Convert a given AdMob error code into a [HeliumErrorCode].
+     * Convert a given Google Bidding error code into a [HeliumErrorCode].
      *
-     * @param error The AdMob error code as an [Int].
+     * @param error The Google Bidding error code as an [Int].
      *
      * @return The corresponding [HeliumErrorCode].
      */
