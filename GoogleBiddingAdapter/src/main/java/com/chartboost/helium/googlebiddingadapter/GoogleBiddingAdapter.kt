@@ -7,7 +7,6 @@ import android.text.TextUtils
 import android.util.DisplayMetrics
 import android.util.Size
 import android.view.View.GONE
-import android.view.View.VISIBLE
 import com.chartboost.heliumsdk.domain.*
 import com.chartboost.heliumsdk.domain.AdFormat
 import com.chartboost.heliumsdk.utils.LogController
@@ -216,7 +215,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an Google Bidding ad.
+     * Attempt to load a Google Bidding ad.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
@@ -233,17 +232,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listeners[request.heliumPlacement] = partnerAdListener
 
         return when (request.format) {
-            AdFormat.INTERSTITIAL -> loadInterstitial(
+            AdFormat.INTERSTITIAL -> loadInterstitialAd(
                 context,
                 request
             )
-            AdFormat.REWARDED -> loadRewarded(
+            AdFormat.REWARDED -> loadRewardedAd(
                 context,
                 request
             )
-            AdFormat.BANNER -> loadBanner(
+            AdFormat.BANNER -> loadBannerAd(
                 context,
-                request
+                request,
+                partnerAdListener
             )
         }
     }
@@ -257,10 +257,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
+        val listener = listeners[partnerAd.request.heliumPlacement]
+        listeners.remove(partnerAd.request.heliumPlacement)
+
         return when (partnerAd.request.format) {
-            AdFormat.BANNER -> showBannerAd(partnerAd)
-            AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd)
-            AdFormat.REWARDED -> showRewardedAd(context, partnerAd)
+            // Banner ads do not have a separate "show" mechanism.
+            AdFormat.BANNER -> Result.success(partnerAd)
+            AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
+            AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
         }
     }
 
@@ -307,18 +311,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an Google Bidding banner on the main thread.
+     * Attempt to load a Google Bidding banner on the main thread.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
+     * @param listener A [PartnerAdListener] to notify Helium of ad events.
      */
-    private suspend fun loadBanner(
+    private suspend fun loadBannerAd(
         context: Context,
-        request: AdLoadRequest
+        request: AdLoadRequest,
+        listener: PartnerAdListener
     ): Result<PartnerAd> {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
-                val adInfo = getAdInfoIfPresent(request) ?: run {
+                val adInfo = constructAdInfo(request) ?: run {
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -327,23 +333,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     return@launch
                 }
 
-                val listener = listeners[request.heliumPlacement]
-                val adview = AdView(context)
+                val bannerAd = AdView(context)
                 val partnerAd = PartnerAd(
-                    ad = adview,
+                    ad = bannerAd,
                     inlineView = null,
                     details = emptyMap(),
                     request = request,
                 )
 
-                adview.adSize = getGoogleBiddingAdSize(request.size)
-                adview.adUnitId = request.partnerPlacement
-                adview.loadAd(buildRequest(adInfo.adString, adInfo, request.identifier))
-                adview.adListener = object : AdListener() {
+                bannerAd.adSize = getGoogleBiddingAdSize(request.size, context)
+                bannerAd.adUnitId = request.partnerPlacement
+                bannerAd.loadAd(buildRequest(adInfo.adString, adInfo, request.identifier))
+                bannerAd.adListener = object : AdListener() {
                     override fun onAdImpression() {
-                        listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                            "$TAG Unable to fire onPartnerAdImpression for Google Bidding adapter."
-                        )
+                        listener.onPartnerAdImpression(partnerAd)
 
                         continuation.resume(Result.success(partnerAd))
                     }
@@ -364,9 +367,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                     override fun onAdClicked() {
-                        listener?.onPartnerAdClicked(partnerAd) ?: LogController.d(
-                            "$TAG Unable to fire onPartnerAdClicked for Google Bidding adapter."
-                        )
+                        listener.onPartnerAdClicked(partnerAd)
                     }
 
                     override fun onAdClosed() {
@@ -381,29 +382,33 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Find the most appropriate Google Bidding ad size for the given screen area based on height.
      *
      * @param size The [Size] to parse for conversion.
+     * @param context The current [Context].
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getGoogleBiddingAdSize(size: Size?) = when (size?.height) {
+    private fun getGoogleBiddingAdSize(size: Size?, context: Context) = when (size?.height) {
         in 50 until 90 -> AdSize.BANNER
         in 90 until 250 -> AdSize.LEADERBOARD
-        in 250 until DisplayMetrics().heightPixels -> AdSize.MEDIUM_RECTANGLE
+        in 250 until convertPixelsToDp(
+            DisplayMetrics().heightPixels,
+            context
+        ).toInt() -> AdSize.MEDIUM_RECTANGLE
         else -> AdSize.BANNER
     }
 
     /**
-     * Attempt to load an Google Bidding interstitial on the main thread.
+     * Attempt to load a Google Bidding interstitial on the main thread.
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing data to load the ad with.
      */
-    private suspend fun loadInterstitial(
+    private suspend fun loadInterstitialAd(
         context: Context,
-        request: AdLoadRequest
+        request: AdLoadRequest,
     ): Result<PartnerAd> {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
-                val adInfo = getAdInfoIfPresent(request) ?: run {
+                val adInfo = constructAdInfo(request) ?: run {
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -442,20 +447,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to load an Google Bidding rewarded ad on the main thread.
+     * Attempt to load a Google Bidding rewarded ad on the main thread.
      *
      * @param context The current [Context].
      * @param request The [AdLoadRequest] containing relevant data for the current ad load call.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
-    private suspend fun loadRewarded(
+    private suspend fun loadRewardedAd(
         context: Context,
         request: AdLoadRequest
     ): Result<PartnerAd> {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
-                val adInfo = getAdInfoIfPresent(request) ?: run {
+                val adInfo = constructAdInfo(request) ?: run {
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -496,35 +501,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempted to show an Google Bidding banner ad on the main thread.
-     *
-     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
-     *
-     * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
-     */
-    private fun showBannerAd(partnerAd: PartnerAd): Result<PartnerAd> {
-        return partnerAd.ad?.let {
-            CoroutineScope(Main).launch {
-                (it as AdView).visibility = VISIBLE
-            }
-            Result.success(partnerAd)
-        } ?: run {
-            LogController.e("$TAG Failed to show Google Bidding banner ad. Banner ad is null.")
-            Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
-        }
-    }
-
-    /**
-     * Attempt to show an Google Bidding interstitial ad on the main thread.
+     * Attempt to show a Google Bidding interstitial ad on the main thread.
      *
      * @param context The current [Context].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
+     * @param listener The [PartnerAdListener] to be notified of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     private suspend fun showInterstitialAd(
         context: Context,
-        partnerAd: PartnerAd
+        partnerAd: PartnerAd,
+        listener: PartnerAdListener?
     ): Result<PartnerAd> {
         if (context !is Activity) {
             LogController.e("$TAG Failed to show Google Bidding interstitial ad. Context is not an Activity.")
@@ -534,10 +522,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return suspendCoroutine { continuation ->
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
-                    val interstitial = ad as InterstitialAd
-                    val listener = listeners[partnerAd.request.heliumPlacement]
-
-                    interstitial.fullScreenContentCallback =
+                    val interstitialAd = ad as InterstitialAd
+                    interstitialAd.fullScreenContentCallback =
                         object : FullScreenContentCallback() {
                             override fun onAdImpression() {
                                 listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
@@ -567,7 +553,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                     )
                             }
                         }
-                    interstitial.show(context)
+                    interstitialAd.show(context)
                 }
             } ?: run {
                 LogController.e("$TAG Failed to show Google Bidding interstitial ad. Ad is null.")
@@ -577,7 +563,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Attempt to show an Google Bidding rewarded ad on the main thread.
+     * Attempt to show a Google Bidding rewarded ad on the main thread.
      *
      * @param context The current [Context].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
@@ -586,7 +572,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     private suspend fun showRewardedAd(
         context: Context,
-        partnerAd: PartnerAd
+        partnerAd: PartnerAd,
+        listener: PartnerAdListener?
     ): Result<PartnerAd> {
         if (context !is Activity) {
             LogController.e("$TAG Failed to show Google Bidding rewarded ad. Context is not an Activity.")
@@ -597,8 +584,6 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedAd = ad as RewardedAd
-                    val listener = listeners[partnerAd.request.heliumPlacement]
-
                     rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
                         override fun onAdImpression() {
                             listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
@@ -689,13 +674,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Get an [AdInfo] object for network bidding purposes.
+     * Construct an [AdInfo] object for network bidding purposes.
      *
      * @param request The [AdLoadRequest] instance containing data about the current ad load call.
      *
-     * @return An [AdInfo] object, if any, containing biddable data for Google Bidding.
+     * @return An [AdInfo] object containing biddable data for Google Bidding.
      */
-    private fun getAdInfoIfPresent(request: AdLoadRequest): AdInfo? {
+    private fun constructAdInfo(request: AdLoadRequest): AdInfo? {
         val adm = request.adm ?: run {
             LogController.e(
                 "$TAG Failed to load Google Bidding ${request.format} ad. Ad string" +
@@ -725,11 +710,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Build an Google Bidding ad request.
+     * Build a Google Bidding ad request.
      *
      * @param identifier The unique identifier associated with the current ad load call.
      *
-     * @return An Google Bidding [AdRequest] object.
+     * @return A Google Bidding [AdRequest] object.
      */
     private fun buildRequest(adm: String, adInfo: AdInfo, identifier: String): AdRequest {
         val extras = buildPrivacyConsents()
@@ -780,5 +765,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
             AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumErrorCode.INVALID_CREDENTIALS
             else -> HeliumErrorCode.INTERNAL
         }
+    }
+
+    /**
+     * Util method to convert a pixels value to a density-independent pixels value.
+     *
+     * @param pixels The pixels value to convert.
+     * @param context The context to use for density conversion.
+     *
+     * @return The converted density-independent pixels value as a Float.
+     */
+    private fun convertPixelsToDp(pixels: Int, context: Context): Float {
+        return pixels / (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
     }
 }
