@@ -9,9 +9,6 @@ repositories {
     maven {
         url 'https://cboost.jfrog.io/artifactory/helium/'
     }
-    flatDir {
-        dirs '../../../android-helium-sdk/Helium/build/outputs/aar'
-    }
 }
 
 android {
@@ -52,7 +49,7 @@ dependencies {
     // For internal usage, please use local pathing to get development features.
     // Ensure that the Helium repo is a sibling of your `helium-android-adapter-googlebidding` dir.
     // The AAR file must also be available.
-    implementation (name:'Helium-debug', ext: 'aar')
+    implementation fileTree(dir: '../../android-helium-sdk/Helium/build/outputs/aar')
 
     // For external usage, please use the following production dependency.
     // You may choose a different release version.
