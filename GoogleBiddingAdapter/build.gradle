@@ -19,7 +19,7 @@ android {
         minSdk 21
         targetSdk 32
         versionCode 1
-        versionName "2.20.6.0.0"
+        versionName "3.21.0.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,8 +55,10 @@ dependencies {
     // You may choose a different release version.
     // implementation 'com.chartboost:helium:2.10.0'
 
+    // Partner SDK
+    implementation 'com.google.android.gms:play-services-ads:21.0.0'
+
     implementation 'org.greenrobot:eventbus:3.3.1'
-    implementation 'com.google.android.gms:play-services-ads:20.6.0'
     implementation "com.google.guava:guava:31.1-android"
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.10"

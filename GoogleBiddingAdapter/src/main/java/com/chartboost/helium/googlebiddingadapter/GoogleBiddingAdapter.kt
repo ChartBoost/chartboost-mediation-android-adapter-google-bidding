@@ -70,7 +70,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Note that the version string will be in the format of afma-sdk-a-v221908999.214106000.1.
      */
     override val partnerSdkVersion: String
-        get() = MobileAds.getVersionString()
+        get() = MobileAds.getVersion().toString()
 
     /**
      * Get the Google Bidding adapter version.
@@ -341,7 +341,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     request = request,
                 )
 
-                bannerAd.adSize = getGoogleBiddingAdSize(request.size, context)
+                bannerAd.setAdSize(getGoogleBiddingAdSize(request.size, context))
                 bannerAd.adUnitId = request.partnerPlacement
                 bannerAd.loadAd(buildRequest(adInfo.adString, adInfo, request.identifier))
                 bannerAd.adListener = object : AdListener() {
