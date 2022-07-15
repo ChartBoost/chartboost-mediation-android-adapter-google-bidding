@@ -343,7 +343,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                 bannerAd.setAdSize(getGoogleBiddingAdSize(request.size, context))
                 bannerAd.adUnitId = request.partnerPlacement
-                bannerAd.loadAd(buildRequest(adInfo.adString, adInfo, request.identifier))
+                bannerAd.loadAd(buildRequest(adInfo.adString, adInfo))
                 bannerAd.adListener = object : AdListener() {
                     override fun onAdImpression() {
                         listener.onPartnerAdImpression(partnerAd)
@@ -419,7 +419,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                 InterstitialAd.load(context,
                     request.partnerPlacement,
-                    buildRequest(adInfo.adString, adInfo, request.identifier),
+                    buildRequest(adInfo.adString, adInfo),
                     object : InterstitialAdLoadCallback() {
                         override fun onAdLoaded(interstitialAd: InterstitialAd) {
                             continuation.resume(
@@ -471,7 +471,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                 RewardedAd.load(context,
                     request.partnerPlacement,
-                    buildRequest(adInfo.adString, adInfo, request.identifier),
+                    buildRequest(adInfo.adString, adInfo),
                     object : RewardedAdLoadCallback() {
                         override fun onAdLoaded(rewardedAd: RewardedAd) {
                             continuation.resume(
@@ -712,23 +712,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Build a Google Bidding ad request.
      *
-     * @param identifier The unique identifier associated with the current ad load call.
+     * @param adm The ad string to be used in the ad request.
+     * @param adInfo The [AdInfo] object containing biddable data for Google Bidding.
      *
      * @return A Google Bidding [AdRequest] object.
      */
-    private fun buildRequest(adm: String, adInfo: AdInfo, identifier: String): AdRequest {
-        val extras = buildPrivacyConsents()
-
-        // Google expects this specific key to be set for debugging purposes.
-        extras.putString("placement_req_id", identifier)
-
-        return AdRequest.Builder()
+    private fun buildRequest(adm: String, adInfo: AdInfo) =
+        AdRequest.Builder()
             .setAdInfo(adInfo)
             .setRequestAgent("Helium")
-            .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
+            .addNetworkExtrasBundle(AdMobAdapter::class.java, buildPrivacyConsents())
             .setAdString(adm)
             .build()
-    }
 
     /**
      * Build a [Bundle] containing privacy settings for the current ad request for Google Bidding.
