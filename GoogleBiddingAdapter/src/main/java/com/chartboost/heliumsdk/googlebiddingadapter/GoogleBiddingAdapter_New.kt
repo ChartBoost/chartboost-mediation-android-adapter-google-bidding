@@ -1,4 +1,4 @@
-package com.chartboost.helium.googlebiddingadapter
+package com.chartboost.heliumsdk.googlebiddingadapter
 
 import android.app.Activity
 import android.content.Context
@@ -30,12 +30,12 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class GoogleBiddingAdapter : PartnerAdapter {
+class GoogleBiddingAdapter_New : PartnerAdapter {
     companion object {
         /**
          * The tag used for log messages.
          */
-        private const val TAG = "[GoogleBiddingAdapter]"
+        private const val TAG = "[GoogleBiddingAdapter_New]"
     }
 
     /**
@@ -80,7 +80,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * of the partner SDK, and `Adapter` is the version of the adapter.
      */
     override val adapterVersion: String
-        get() = BuildConfig.VERSION_NAME
+        get() = "BuildConfig.VERSION_NAME" // TODO: Uncomment
 
     /**
      * Get the partner name for internal uses.
@@ -118,18 +118,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Save the current GDPR applicability state for later use.
      *
-     * @param gdprApplies The current GDPR applicability state.
+     * @param context The current [Context].
+     * @param gdprApplies True if GDPR applies, false otherwise.
      */
-    override fun setGdprApplies(gdprApplies: Boolean) {
+    override fun setGdprApplies(context: Context, gdprApplies: Boolean) {
         this.gdprApplies = gdprApplies
     }
 
     /**
      * Get whether to allow personalized ads based on the user's GDPR consent status.
      *
+     * @param context The current [Context].
      * @param gdprConsentStatus The user's current GDPR consent status.
      */
-    override fun setGdprConsentStatus(gdprConsentStatus: GdprConsentStatus) {
+    override fun setGdprConsentStatus(context: Context, gdprConsentStatus: GdprConsentStatus) {
         if (gdprApplies == true) {
             allowPersonalizedAds = gdprConsentStatus == GdprConsentStatus.GDPR_CONSENT_GRANTED
         }
@@ -138,16 +140,21 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Save the current CCPA privacy String to be used later.
      *
+     * @param context The current [Context].
+     * @param hasGivenCcpaConsent True if the user has given CCPA consent, false otherwise.
      * @param privacyString The CCPA privacy String.
      */
-    override fun setCcpaPrivacyString(privacyString: String?) {
+    override fun setCcpaConsent(context: Context, hasGivenCcpaConsent: Boolean, privacyString: String?) {
         ccpaPrivacyString = privacyString
     }
 
     /**
      * Notify Google Bidding of the COPPA subjectivity.
+     *
+     * @param context The current [Context].
+     * @param isSubjectToCoppa True if the user is subject to COPPA, false otherwise.
      */
-    override fun setUserSubjectToCoppa(isSubjectToCoppa: Boolean) {
+    override fun setUserSubjectToCoppa(context: Context, isSubjectToCoppa: Boolean) {
         MobileAds.setRequestConfiguration(
             MobileAds.getRequestConfiguration().toBuilder()
                 .setTagForChildDirectedTreatment(
@@ -336,7 +343,6 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val bannerAd = AdView(context)
                 val partnerAd = PartnerAd(
                     ad = bannerAd,
-                    inlineView = null,
                     details = emptyMap(),
                     request = request,
                 )
@@ -426,7 +432,6 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 Result.success(
                                     PartnerAd(
                                         ad = interstitialAd,
-                                        inlineView = null,
                                         details = emptyMap(),
                                         request = request
                                     )
@@ -478,7 +483,6 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 Result.success(
                                     PartnerAd(
                                         ad = rewardedAd,
-                                        inlineView = null,
                                         details = emptyMap(),
                                         request = request
                                     )
