@@ -1,4 +1,4 @@
-package com.chartboost.heliumsdk.googlebiddingadapter
+package com.chartboost.helium.googlebiddingadapter
 
 import android.app.Activity
 import android.content.Context
@@ -30,12 +30,12 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class GoogleBiddingAdapter_New : PartnerAdapter {
+class GoogleBiddingAdapter : PartnerAdapter {
     companion object {
         /**
          * The tag used for log messages.
          */
-        private const val TAG = "[GoogleBiddingAdapter_New]"
+        private val TAG = "[${this::class.java.simpleName}]"
     }
 
     /**
