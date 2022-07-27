@@ -80,7 +80,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * of the partner SDK, and `Adapter` is the version of the adapter.
      */
     override val adapterVersion: String
-        get() = "BuildConfig.VERSION_NAME" // TODO: Uncomment
+        get() = BuildConfig.HELIUM_GOOGLE_BIDDING_ADAPTER_VERSION
 
     /**
      * Get the partner name for internal uses.

@@ -19,6 +19,7 @@ android {
         targetSdk 32
         versionCode 1
         versionName "3.21.0.0.0"
+        buildConfigField "String", "HELIUM_GOOGLE_BIDDING_ADAPTER_VERSION", "\"$versionName\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
