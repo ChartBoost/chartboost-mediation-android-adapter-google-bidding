@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.application'
+    id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
 }
 
@@ -15,11 +15,11 @@ android {
     compileSdk 32
 
     defaultConfig {
-        applicationId "com.chartboost.helium.googlebiddingadapter"
         minSdk 21
         targetSdk 32
         versionCode 1
         versionName "3.21.0.0.0"
+        buildConfigField "String", "HELIUM_GOOGLE_BIDDING_ADAPTER_VERSION", "\"$versionName\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -46,14 +46,7 @@ android {
 }
 
 dependencies {
-    // For internal usage, please use local pathing to get development features.
-    // Ensure that the Helium repo is a sibling of your `helium-android-adapter-googlebidding` dir.
-    // The AAR file must also be available.
-    implementation fileTree(dir: '../../android-helium-sdk/Helium/build/outputs/aar')
-
-    // For external usage, please use the following production dependency.
-    // You may choose a different release version.
-    // implementation 'com.chartboost:helium:2.10.0'
+    implementation project(path: ':Helium')
 
     // Partner SDK
     implementation 'com.google.android.gms:play-services-ads:21.0.0'
