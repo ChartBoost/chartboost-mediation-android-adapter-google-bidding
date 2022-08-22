@@ -235,17 +235,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
         request: AdLoadRequest,
         partnerAdListener: PartnerAdListener
     ): Result<PartnerAd> {
-        // Save the listener for later use.
-        listeners[request.heliumPlacement] = partnerAdListener
-
         return when (request.format) {
             AdFormat.INTERSTITIAL -> loadInterstitialAd(
                 context,
-                request
+                request,
+                partnerAdListener
             )
             AdFormat.REWARDED -> loadRewardedAd(
                 context,
-                request
+                request,
+                partnerAdListener
             )
             AdFormat.BANNER -> loadBannerAd(
                 context,
@@ -264,8 +263,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
-        val listener = listeners[partnerAd.request.heliumPlacement]
-        listeners.remove(partnerAd.request.heliumPlacement)
+        val listener = listeners.remove(partnerAd.request.heliumPlacement)
 
         return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
@@ -347,7 +345,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     request = request,
                 )
 
-                bannerAd.setAdSize(getGoogleBiddingAdSize(request.size, context))
+                bannerAd.setAdSize(getGoogleBiddingAdSize(request.size))
                 bannerAd.adUnitId = request.partnerPlacement
                 bannerAd.loadAd(buildRequest(adInfo.adString, adInfo))
                 bannerAd.adListener = object : AdListener() {
@@ -388,18 +386,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Find the most appropriate Google Bidding ad size for the given screen area based on height.
      *
      * @param size The [Size] to parse for conversion.
-     * @param context The current [Context].
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getGoogleBiddingAdSize(size: Size?, context: Context) = when (size?.height) {
-        in 50 until 90 -> AdSize.BANNER
-        in 90 until 250 -> AdSize.LEADERBOARD
-        in 250 until convertPixelsToDp(
-            DisplayMetrics().heightPixels,
-            context
-        ).toInt() -> AdSize.MEDIUM_RECTANGLE
-        else -> AdSize.BANNER
+    private fun getGoogleBiddingAdSize(size: Size?): AdSize {
+        return size?.height?.let {
+            when {
+                it in 50 until 90 -> AdSize.BANNER
+                it in 90 until 250 -> AdSize.LEADERBOARD
+                it >= 250 -> AdSize.MEDIUM_RECTANGLE
+                else -> AdSize.BANNER
+            }
+        } ?: AdSize.BANNER
     }
 
     /**
@@ -407,11 +405,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request An [AdLoadRequest] instance containing data to load the ad with.
+     * @param listener A [PartnerAdListener] to notify Helium of ad events.
+     *
+     * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
     private suspend fun loadInterstitialAd(
         context: Context,
         request: AdLoadRequest,
+        listener: PartnerAdListener
     ): Result<PartnerAd> {
+        // Save the listener for later use.
+        listeners[request.heliumPlacement] = listener
+
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
@@ -456,13 +461,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request The [AdLoadRequest] containing relevant data for the current ad load call.
+     * @param listener A [PartnerAdListener] to notify Helium of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
     private suspend fun loadRewardedAd(
         context: Context,
-        request: AdLoadRequest
+        request: AdLoadRequest,
+        listener: PartnerAdListener
     ): Result<PartnerAd> {
+        // Save the listener for later use.
+        listeners[request.heliumPlacement] = listener
+
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
@@ -571,6 +581,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
+     * @param listener A [PartnerAdListener] to notify Helium of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
