@@ -34,7 +34,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     companion object {
         /**
          * List containing device IDs to be set for enabling Google Bidding test ads. It can be populated at
-         * any time and it will take effect for the next ad request. Remember to empty this list or
+         * any time and will take effect for the next ad request. Remember to empty this list or
          * stop setting it before releasing your app.
          */
         public var testDeviceIds = listOf<String>()
