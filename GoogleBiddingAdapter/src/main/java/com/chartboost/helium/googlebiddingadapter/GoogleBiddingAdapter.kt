@@ -9,7 +9,10 @@ import android.util.Size
 import android.view.View.GONE
 import com.chartboost.heliumsdk.domain.*
 import com.chartboost.heliumsdk.domain.AdFormat
-import com.chartboost.heliumsdk.utils.LogController
+import com.chartboost.heliumsdk.utils.PartnerLogController
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.*
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterFailureEvents.*
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterSuccessEvents.*
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.initialization.AdapterStatus
@@ -40,7 +43,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
         public var testDeviceIds = listOf<String>()
             set(value) {
                 field = value
-                LogController.d(
+                PartnerLogController.log(
+                    CUSTOM,
                     "Google Bidding test device ID(s) to be set: ${
                         if (value.isEmpty()) "none"
                         else value.joinToString()
@@ -118,6 +122,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         context: Context,
         partnerConfiguration: PartnerConfiguration
     ): Result<Unit> {
+        PartnerLogController.log(SETUP_STARTED)
         // Since Helium is the mediator, no need to initialize Google Bidding's partner SDKs.
         // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
         MobileAds.disableMediationAdapterInitialization(context)
@@ -197,6 +202,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
         context: Context,
         request: PreBidRequest
     ): Map<String, String> {
+        PartnerLogController.log(BIDDER_INFO_FETCH_STARTED)
+
         // Google-defined specs for Helium
         val extras = Bundle()
         extras.putString("query_info_type", "requester_type_2")
@@ -219,6 +226,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             // Cache the QueryInfo so it can be looked up by the Helium placement name.
                             placementToQueryInfoCache?.put(request.heliumPlacement, queryInfo)
 
+                            PartnerLogController.log(BIDDER_INFO_FETCH_SUCCEEDED)
                             continuation.resumeWith(
                                 Result.success(
                                     mapOf("token" to queryInfo.query)
@@ -227,6 +235,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
 
                         override fun onFailure(error: String) {
+                            PartnerLogController.log(BIDDER_INFO_FETCH_FAILED, error)
                             continuation.resumeWith(
                                 Result.success(
                                     emptyMap()
@@ -243,16 +252,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Attempt to load a Google Bidding ad.
      *
      * @param context The current [Context].
-     * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
+     * @param request An [PartnerAdLoadRequest] instance containing relevant data for the current ad load call.
      * @param partnerAdListener A [PartnerAdListener] to notify Helium of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
     override suspend fun load(
         context: Context,
-        request: AdLoadRequest,
+        request: PartnerAdLoadRequest,
         partnerAdListener: PartnerAdListener
     ): Result<PartnerAd> {
+        PartnerLogController.log(LOAD_STARTED)
+
         return when (request.format) {
             AdFormat.INTERSTITIAL -> loadInterstitialAd(
                 context,
@@ -281,11 +292,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
+        PartnerLogController.log(SHOW_STARTED)
         val listener = listeners.remove(partnerAd.request.heliumPlacement)
 
         return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
-            AdFormat.BANNER -> Result.success(partnerAd)
+            AdFormat.BANNER -> {
+                PartnerLogController.log(SHOW_SUCCEEDED)
+                Result.success(partnerAd)
+            }
             AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
         }
@@ -299,12 +314,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return Result.success(PartnerAd) if the ad was successfully discarded, Result.failure(Exception) otherwise.
      */
     override suspend fun invalidate(partnerAd: PartnerAd): Result<PartnerAd> {
+        PartnerLogController.log(INVALIDATE_STARTED)
         listeners.remove(partnerAd.request.heliumPlacement)
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
         return when (partnerAd.request.format) {
             AdFormat.BANNER -> destroyBannerAd(partnerAd)
-            else -> Result.success(partnerAd)
+            else -> {
+                PartnerLogController.log(INVALIDATE_SUCCEEDED)
+                Result.success(partnerAd)
+            }
         }
     }
 
@@ -319,16 +338,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return status?.let { it ->
             if (it.initializationState == AdapterStatus.State.READY) {
                 setUpQueryInfoCache()
-                Result.success(LogController.i("Google Bidding successfully initialized."))
+                Result.success(PartnerLogController.log(SETUP_SUCCEEDED))
             } else {
-                LogController.e(
-                    "Google Bidding failed to initialize. Initialization state: " +
+                PartnerLogController.log(
+                    SETUP_FAILED,
+                    "Initialization state: " +
                             "$it.initializationState. Description: $it.description\""
                 )
                 Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
             }
         } ?: run {
-            LogController.e("Google Bidding failed to initialize. Initialization status is null.")
+            PartnerLogController.log(SETUP_FAILED, "Initialization status is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
         }
     }
@@ -337,17 +357,21 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Attempt to load a Google Bidding banner on the main thread.
      *
      * @param context The current [Context].
-     * @param request An [AdLoadRequest] instance containing relevant data for the current ad load call.
+     * @param request An [PartnerAdLoadRequest] instance containing relevant data for the current ad load call.
      * @param listener A [PartnerAdListener] to notify Helium of ad events.
      */
     private suspend fun loadBannerAd(
         context: Context,
-        request: AdLoadRequest,
+        request: PartnerAdLoadRequest,
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
+                    PartnerLogController.log(
+                        LOAD_FAILED,
+                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                    )
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -368,17 +392,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 bannerAd.loadAd(buildRequest(adInfo.adString, adInfo))
                 bannerAd.adListener = object : AdListener() {
                     override fun onAdImpression() {
+                        PartnerLogController.log(DID_TRACK_IMPRESSION)
                         listener.onPartnerAdImpression(partnerAd)
-
-                        continuation.resume(Result.success(partnerAd))
                     }
 
                     override fun onAdLoaded() {
+                        PartnerLogController.log(LOAD_SUCCEEDED)
                         continuation.resume(Result.success(partnerAd))
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
-                        LogController.e("Failed to load Google Bidding banner: ${adError.message}")
+                        PartnerLogController.log(LOAD_FAILED, adError.message)
                         continuation.resume(
                             Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                         )
@@ -389,6 +413,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                     override fun onAdClicked() {
+                        PartnerLogController.log(DID_CLICK)
                         listener.onPartnerAdClicked(partnerAd)
                     }
 
@@ -422,14 +447,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Attempt to load a Google Bidding interstitial on the main thread.
      *
      * @param context The current [Context].
-     * @param request An [AdLoadRequest] instance containing data to load the ad with.
+     * @param request An [PartnerAdLoadRequest] instance containing data to load the ad with.
      * @param listener A [PartnerAdListener] to notify Helium of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
     private suspend fun loadInterstitialAd(
         context: Context,
-        request: AdLoadRequest,
+        request: PartnerAdLoadRequest,
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
@@ -438,6 +463,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
+                    PartnerLogController.log(
+                        LOAD_FAILED,
+                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                    )
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -451,6 +480,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     buildRequest(adInfo.adString, adInfo),
                     object : InterstitialAdLoadCallback() {
                         override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                            PartnerLogController.log(LOAD_SUCCEEDED)
                             continuation.resume(
                                 Result.success(
                                     PartnerAd(
@@ -463,7 +493,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                            LogController.e("Failed to load Google Bidding interstitial ad: ${loadAdError.message}")
+                            PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
                                 Result.failure(HeliumAdException(getHeliumErrorCode(loadAdError.code)))
                             )
@@ -478,14 +508,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Attempt to load a Google Bidding rewarded ad on the main thread.
      *
      * @param context The current [Context].
-     * @param request The [AdLoadRequest] containing relevant data for the current ad load call.
+     * @param request The [PartnerAdLoadRequest] containing relevant data for the current ad load call.
      * @param listener A [PartnerAdListener] to notify Helium of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
     private suspend fun loadRewardedAd(
         context: Context,
-        request: AdLoadRequest,
+        request: PartnerAdLoadRequest,
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
@@ -494,6 +524,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
+                    PartnerLogController.log(
+                        LOAD_FAILED,
+                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                    )
                     continuation.resumeWith(
                         Result.failure(
                             HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
@@ -507,6 +541,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     buildRequest(adInfo.adString, adInfo),
                     object : RewardedAdLoadCallback() {
                         override fun onAdLoaded(rewardedAd: RewardedAd) {
+                            PartnerLogController.log(LOAD_SUCCEEDED)
                             continuation.resume(
                                 Result.success(
                                     PartnerAd(
@@ -519,7 +554,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                            LogController.e("Failed to load Google Bidding rewarded ad: ${loadAdError.message}")
+                            PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
                                 Result.failure(
                                     HeliumAdException(getHeliumErrorCode(loadAdError.code))
@@ -547,7 +582,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener?
     ): Result<PartnerAd> {
         if (context !is Activity) {
-            LogController.e("Failed to show Google Bidding interstitial ad. Context is not an Activity.")
+            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
             return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
 
@@ -558,29 +593,31 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     interstitialAd.fullScreenContentCallback =
                         object : FullScreenContentCallback() {
                             override fun onAdImpression() {
-                                listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
-                                    "Unable to fire onPartnerAdImpression for Google Bidding adapter."
-                                )
-                                continuation.resume(Result.success(partnerAd))
+                                PartnerLogController.log(DID_TRACK_IMPRESSION)
+                                listener?.onPartnerAdImpression(partnerAd)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                    )
                             }
 
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                LogController.e(
-                                    "Failed to show Google Bidding interstitial ad. " +
-                                            "Error: ${adError.message}"
-                                )
+                                PartnerLogController.log(SHOW_FAILED, adError.message)
                                 continuation.resume(
                                     Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                                 )
                             }
 
                             override fun onAdShowedFullScreenContent() {
+                                PartnerLogController.log(SHOW_SUCCEEDED)
                                 continuation.resume(Result.success(partnerAd))
                             }
 
                             override fun onAdDismissedFullScreenContent() {
+                                PartnerLogController.log(DID_DISMISS)
                                 listener?.onPartnerAdDismissed(partnerAd, null)
-                                    ?: LogController.d(
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
                                         "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
                                     )
                             }
@@ -588,7 +625,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     interstitialAd.show(context)
                 }
             } ?: run {
-                LogController.e("Failed to show Google Bidding interstitial ad. Ad is null.")
+                PartnerLogController.log(SHOW_FAILED, "Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
@@ -609,7 +646,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener?
     ): Result<PartnerAd> {
         if (context !is Activity) {
-            LogController.e("Failed to show Google Bidding rewarded ad. Context is not an Activity.")
+            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
             return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
 
@@ -619,39 +656,46 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     val rewardedAd = ad as RewardedAd
                     rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
                         override fun onAdImpression() {
-                            listener?.onPartnerAdImpression(partnerAd) ?: LogController.d(
+                            PartnerLogController.log(DID_TRACK_IMPRESSION)
+                            listener?.onPartnerAdImpression(partnerAd) ?: PartnerLogController.log(
+                                CUSTOM,
                                 "Unable to fire onPartnerAdImpression for Google Bidding adapter."
                             )
-                            continuation.resume(Result.success(partnerAd))
                         }
 
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                            LogController.e("Failed to show Google Bidding rewarded ad. Error: ${adError.message}")
+                            PartnerLogController.log(SHOW_FAILED, adError.message)
                             continuation.resume(
                                 Result.failure(HeliumAdException(getHeliumErrorCode(adError.code)))
                             )
                         }
 
                         override fun onAdShowedFullScreenContent() {
+                            PartnerLogController.log(SHOW_SUCCEEDED)
                             continuation.resume(Result.success(partnerAd))
                         }
 
                         override fun onAdDismissedFullScreenContent() {
-                            listener?.onPartnerAdDismissed(partnerAd, null) ?: LogController.d(
-                                "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
-                            )
+                            PartnerLogController.log(DID_DISMISS)
+                            listener?.onPartnerAdDismissed(partnerAd, null)
+                                ?: PartnerLogController.log(
+                                    CUSTOM,
+                                    "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                )
                         }
                     }
 
                     rewardedAd.show(context) { reward ->
+                        PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd, Reward(reward.amount, reward.type))
-                            ?: LogController.d(
+                            ?: PartnerLogController.log(
+                                CUSTOM,
                                 "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
                             )
                     }
                 }
             } ?: run {
-                LogController.e("Failed to show Google Bidding rewarded ad. Ad is null.")
+                PartnerLogController.log(SHOW_FAILED, "Ad is null.")
                 continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
             }
         }
@@ -669,13 +713,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
             if (it is AdView) {
                 it.visibility = GONE
                 it.destroy()
+
+                PartnerLogController.log(INVALIDATE_SUCCEEDED)
                 Result.success(partnerAd)
             } else {
-                LogController.e("Failed to destroy Google Bidding banner ad. Ad is not an AdView.")
+                PartnerLogController.log(INVALIDATE_FAILED, "Ad is not an AdView.")
                 Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
             }
         } ?: run {
-            LogController.e("Failed to destroy Google Bidding banner ad. Ad is null.")
+            PartnerLogController.log(INVALIDATE_FAILED, "Ad is null.")
             Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
         }
     }
@@ -709,30 +755,23 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Construct an [AdInfo] object for network bidding purposes.
      *
-     * @param request The [AdLoadRequest] instance containing data about the current ad load call.
+     * @param request The [PartnerAdLoadRequest] instance containing data about the current ad load call.
      *
      * @return An [AdInfo] object containing biddable data for Google Bidding.
      */
-    private fun constructAdInfo(request: AdLoadRequest): AdInfo? {
+    private fun constructAdInfo(request: PartnerAdLoadRequest): AdInfo? {
         val adm = request.adm ?: run {
-            LogController.e(
-                "Failed to load Google Bidding ${request.format} ad. Ad string" +
-                        " is null."
-            )
+            PartnerLogController.log(LOAD_FAILED, "Ad string is null.")
             return null
         }
 
         val queryInfo = placementToQueryInfoCache?.let { cache ->
             cache.getIfPresent(request.partnerPlacement) ?: run {
-                LogController.e(
-                    "Failed to load Google Bidding ${request.format} ad. QueryInfo is null."
-                )
+                PartnerLogController.log(LOAD_FAILED, "QueryInfo is null.")
                 return null
             }
         } ?: run {
-            LogController.e(
-                "Failed to load Google Bidding ${request.format} ad. QueryInfo cache is null."
-            )
+            PartnerLogController.log(LOAD_FAILED, "QueryInfo cache is null.")
             return null
         }
 
