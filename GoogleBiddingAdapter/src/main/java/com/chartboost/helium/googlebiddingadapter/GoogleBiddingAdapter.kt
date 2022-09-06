@@ -342,8 +342,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             } else {
                 PartnerLogController.log(
                     SETUP_FAILED,
-                    "Initialization state: " +
-                            "$it.initializationState. Description: $it.description\""
+                    "Initialization state: $it.initializationState. Description: $it.description"
                 )
                 Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
             }
