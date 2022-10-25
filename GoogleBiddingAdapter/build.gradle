@@ -21,11 +21,12 @@ repositories {
 }
 
 android {
-    compileSdk 32
+    namespace "com.chartboost.helium.googlebiddingadapter"
+    compileSdk 33
 
     defaultConfig {
         minSdk 21
-        targetSdk 32
+        targetSdk 33
         versionCode 1
         // If you touch the following line, don't forget to update scripts/get_rc_version.zsh
         versionName System.getenv("VERSION_OVERRIDE") ?: "4.21.3.0.0"
@@ -71,16 +72,10 @@ dependencies {
 
     // Partner SDK
     implementation 'com.google.android.gms:play-services-ads:21.3.0'
-
-    implementation 'org.greenrobot:eventbus:3.3.1'
     implementation "com.google.guava:guava:31.1-android"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.10"
-    implementation 'androidx.appcompat:appcompat:1.4.2'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.4.2'
-    implementation 'com.google.android.material:material:1.4.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.4.2'
+
+    // Adapter Dependencies
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 }
 
 artifactory {
