@@ -849,16 +849,4 @@ class GoogleBiddingAdapter : PartnerAdapter {
             else -> HeliumErrorCode.INTERNAL
         }
     }
-
-    /**
-     * Util method to convert a pixels value to a density-independent pixels value.
-     *
-     * @param pixels The pixels value to convert.
-     * @param context The context to use for density conversion.
-     *
-     * @return The converted density-independent pixels value as a Float.
-     */
-    private fun convertPixelsToDp(pixels: Int, context: Context): Float {
-        return pixels / (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
-    }
 }
