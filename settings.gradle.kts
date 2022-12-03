@@ -7,6 +7,6 @@ pluginManagement {
 }
 
 rootProject.name = "GoogleBiddingAdapter"
-include ':GoogleBiddingAdapter'
-include ':android-helium-sdk'
-include ':Helium'
+include(":GoogleBiddingAdapter")
+include(":android-helium-sdk")
+include(":Helium")
