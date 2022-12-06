@@ -361,11 +361,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     SETUP_FAILED,
                     "Initialization state: $it.initializationState. Description: $it.description"
                 )
-                Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
+                Result.failure(HeliumAdException(HeliumErrorCode.HE_INITIALIZATION_FAILURE_UNKNOWN))
             }
         } ?: run {
             PartnerLogController.log(SETUP_FAILED, "Initialization status is null.")
-            Result.failure(HeliumAdException(HeliumErrorCode.PARTNER_SDK_NOT_INITIALIZED))
+            Result.failure(HeliumAdException(HeliumErrorCode.HE_INITIALIZATION_FAILURE_UNKNOWN))
         }
     }
 
@@ -386,11 +386,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                        HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
+                            HeliumAdException(HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -481,11 +481,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                        HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
+                            HeliumAdException(HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -542,11 +542,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumErrorCode.INVALID_BID_PAYLOAD.message
+                        HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumErrorCode.INVALID_BID_PAYLOAD)
+                            HeliumAdException(HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -599,7 +599,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
+            return Result.failure(HeliumAdException(HeliumErrorCode.HE_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
         return suspendCoroutine { continuation ->
@@ -642,7 +642,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
+                continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.HE_SHOW_FAILURE_AD_NOT_FOUND)))
             }
         }
     }
@@ -663,7 +663,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
+            return Result.failure(HeliumAdException(HeliumErrorCode.HE_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
         return suspendCoroutine { continuation ->
@@ -712,7 +712,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL)))
+                continuation.resume(Result.failure(HeliumAdException(HeliumErrorCode.HE_SHOW_FAILURE_AD_NOT_FOUND)))
             }
         }
     }
@@ -734,11 +734,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 Result.success(partnerAd)
             } else {
                 PartnerLogController.log(INVALIDATE_FAILED, "Ad is not an AdView.")
-                Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
+                Result.failure(HeliumAdException(HeliumErrorCode.HE_INVALIDATE_FAILURE_WRONG_RESOURCE_TYPE))
             }
         } ?: run {
             PartnerLogController.log(INVALIDATE_FAILED, "Ad is null.")
-            Result.failure(HeliumAdException(HeliumErrorCode.INTERNAL))
+            Result.failure(HeliumAdException(HeliumErrorCode.HE_INVALIDATE_FAILURE_AD_NOT_FOUND))
         }
     }
 
@@ -839,14 +839,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     private fun getHeliumErrorCode(error: Int): HeliumErrorCode {
         return when (error) {
-            AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumErrorCode.INVALID_CONFIG
-            AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumErrorCode.INTERNAL
-            AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumErrorCode.INVALID_BID_PAYLOAD
-            AdRequest.ERROR_CODE_INVALID_REQUEST -> HeliumErrorCode.PARTNER_ERROR
-            AdRequest.ERROR_CODE_NETWORK_ERROR -> HeliumErrorCode.NO_CONNECTIVITY
-            AdRequest.ERROR_CODE_NO_FILL -> HeliumErrorCode.NO_FILL
-            AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumErrorCode.INVALID_CREDENTIALS
-            else -> HeliumErrorCode.INTERNAL
+            AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumErrorCode.HE_LOAD_FAILURE_NOT_INITIALIZED
+            AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumErrorCode.HE_INTERNAL_ERROR
+            AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_MARKUP
+            AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumErrorCode.HE_LOAD_FAILURE_INVALID_AD_REQUEST
+            AdRequest.ERROR_CODE_NETWORK_ERROR -> HeliumErrorCode.HE_NO_CONNECTIVITY
+            AdRequest.ERROR_CODE_NO_FILL -> HeliumErrorCode.HE_LOAD_FAILURE_NO_FILL
+            else -> HeliumErrorCode.HE_PARTNER_ERROR
         }
     }
 }
