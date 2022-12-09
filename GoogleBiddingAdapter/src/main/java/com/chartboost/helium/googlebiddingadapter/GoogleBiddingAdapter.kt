@@ -358,7 +358,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             } else {
                 PartnerLogController.log(
                     SETUP_FAILED,
-                    "Initialization state: $it.initializationState. Description: $it.description"
+                    "Initialization state: ${it.initializationState}. Description: ${it.description}"
                 )
                 Result.failure(HeliumAdException(HeliumError.HE_INITIALIZATION_FAILURE_UNKNOWN))
             }
