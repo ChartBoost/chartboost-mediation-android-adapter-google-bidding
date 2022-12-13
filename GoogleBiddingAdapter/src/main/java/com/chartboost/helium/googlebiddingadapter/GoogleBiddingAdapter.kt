@@ -706,7 +706,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                     rewardedAd.show(context) { reward ->
                         PartnerLogController.log(DID_REWARD)
-                        listener?.onPartnerAdRewarded(partnerAd, Reward(reward.amount, reward.type))
+                        listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
                                 CUSTOM,
                                 "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
