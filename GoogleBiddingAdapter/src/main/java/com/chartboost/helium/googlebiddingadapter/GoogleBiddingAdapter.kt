@@ -90,9 +90,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Get the Google Bidding adapter version.
      *
-     * Note that the version string will be in the format of `Helium.Partner.Partner.Partner.Adapter`,
-     * in which `Helium` is the version of the Helium SDK, `Partner` is the major.minor.patch version
-     * of the partner SDK, and `Adapter` is the version of the adapter.
+     * You may version the adapter using any preferred convention, but it is recommended to apply the
+     * following format if the adapter will be published by Helium:
+     *
+     * Helium.Partner.Adapter
+     *
+     * "Helium" represents the Helium SDK’s major version that is compatible with this adapter. This must be 1 digit.
+     * "Partner" represents the partner SDK’s major.minor.patch.x (where x is optional) version that is compatible with this adapter. This can be 3-4 digits.
+     * "Adapter" represents this adapter’s version (starting with 0), which resets to 0 when the partner SDK’s version changes. This must be 1 digit.
      */
     override val adapterVersion: String
         get() = BuildConfig.HELIUM_GOOGLE_BIDDING_ADAPTER_VERSION
@@ -704,7 +709,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         }
                     }
 
-                    rewardedAd.show(context) { reward ->
+                    rewardedAd.show(context) {
                         PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
@@ -840,15 +845,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The corresponding [HeliumError].
      */
-    private fun getHeliumError(error: Int): HeliumError {
-        return when (error) {
-            AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumError.HE_LOAD_FAILURE_NOT_INITIALIZED
-            AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumError.HE_INTERNAL_ERROR
-            AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP
-            AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_REQUEST
-            AdRequest.ERROR_CODE_NETWORK_ERROR -> HeliumError.HE_NO_CONNECTIVITY
-            AdRequest.ERROR_CODE_NO_FILL -> HeliumError.HE_LOAD_FAILURE_NO_FILL
-            else -> HeliumError.HE_PARTNER_ERROR
-        }
+    private fun getHeliumError(error: Int) = when (error) {
+        AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumError.HE_LOAD_FAILURE_NOT_INITIALIZED
+        AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumError.HE_INTERNAL_ERROR
+        AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP
+        AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_REQUEST
+        AdRequest.ERROR_CODE_NETWORK_ERROR -> HeliumError.HE_NO_CONNECTIVITY
+        AdRequest.ERROR_CODE_NO_FILL -> HeliumError.HE_LOAD_FAILURE_NO_FILL
+        else -> HeliumError.HE_PARTNER_ERROR
     }
 }
