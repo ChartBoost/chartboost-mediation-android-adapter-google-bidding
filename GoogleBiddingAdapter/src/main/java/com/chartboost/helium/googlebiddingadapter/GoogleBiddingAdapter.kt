@@ -846,7 +846,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return The corresponding [HeliumError].
      */
     private fun getHeliumError(error: Int) = when (error) {
-        AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumError.HE_LOAD_FAILURE_NOT_INITIALIZED
+        AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumError.HE_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
         AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumError.HE_INTERNAL_ERROR
         AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP
         AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_REQUEST
