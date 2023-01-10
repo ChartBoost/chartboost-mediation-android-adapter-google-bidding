@@ -53,7 +53,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
 
         /**
-         * The TTL for cached QueryInfo objects from Google.
+         * The TTL for cached QueryInfo objects. Ad requests with QueryInfo's older than this value
+         * will be discarded. Recommended by Google.
          */
         private const val QUERY_INFO_TTL_MINUTES = 3L
     }
