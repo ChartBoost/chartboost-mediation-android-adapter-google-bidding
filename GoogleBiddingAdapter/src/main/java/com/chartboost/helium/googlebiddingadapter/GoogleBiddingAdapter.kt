@@ -51,6 +51,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     RequestConfiguration.Builder().setTestDeviceIds(value).build()
                 )
             }
+
+        /**
+         * The TTL for cached QueryInfo objects from Google.
+         */
+        private const val QUERY_INFO_TTL_MINUTES = 3L
     }
 
     /**
@@ -788,7 +793,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun setUpQueryInfoCache() {
         placementToQueryInfoCache = CacheBuilder.newBuilder()
             .expireAfterWrite(
-                AppConfig.googleBiddingCacheTimeoutMinutes,
+                QUERY_INFO_TTL_MINUTES,
                 TimeUnit.MINUTES
             )
             .build()
