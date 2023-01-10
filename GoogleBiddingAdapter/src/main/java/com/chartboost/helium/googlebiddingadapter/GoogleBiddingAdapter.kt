@@ -637,6 +637,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 continuation.resume(Result.success(partnerAd))
                             }
 
+                            override fun onAdClicked() {
+                                PartnerLogController.log(DID_CLICK)
+                                listener?.onPartnerAdClicked(partnerAd)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                                    )
+                            }
+
                             override fun onAdDismissedFullScreenContent() {
                                 PartnerLogController.log(DID_DISMISS)
                                 listener?.onPartnerAdDismissed(partnerAd, null)
@@ -697,6 +706,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         override fun onAdShowedFullScreenContent() {
                             PartnerLogController.log(SHOW_SUCCEEDED)
                             continuation.resume(Result.success(partnerAd))
+                        }
+
+                        override fun onAdClicked() {
+                            PartnerLogController.log(DID_CLICK)
+                            listener?.onPartnerAdClicked(partnerAd)
+                                ?: PartnerLogController.log(
+                                    CUSTOM,
+                                    "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                                )
                         }
 
                         override fun onAdDismissedFullScreenContent() {
