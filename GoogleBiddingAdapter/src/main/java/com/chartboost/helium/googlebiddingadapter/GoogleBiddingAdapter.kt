@@ -814,7 +814,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         }
 
         val queryInfo = placementToQueryInfoCache?.let { cache ->
-            cache.getIfPresent(request.partnerPlacement) ?: run {
+            cache.getIfPresent(request.heliumPlacement) ?: run {
                 PartnerLogController.log(LOAD_FAILED, "QueryInfo is null.")
                 return null
             }
