@@ -5,7 +5,7 @@
  * license that can be found in the LICENSE file.
  */
 
-package com.chartboost.helium.googlebiddingadapter
+package com.chartboost.mediation.googlebiddingadapter
 
 import android.app.Activity
 import android.content.Context
@@ -67,7 +67,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * A map of Helium's listeners for the corresponding Helium placements.
+     * A map of Chartboost Mediation's listeners for the corresponding Chartboost placements.
      */
     private val listeners = mutableMapOf<String, PartnerAdListener>()
 
@@ -104,16 +104,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Get the Google Bidding adapter version.
      *
      * You may version the adapter using any preferred convention, but it is recommended to apply the
-     * following format if the adapter will be published by Helium:
+     * following format if the adapter will be published by Chartboost Mediation:
      *
-     * Helium.Partner.Adapter
+     * Chartboost Mediation.Partner.Adapter
      *
-     * "Helium" represents the Helium SDK’s major version that is compatible with this adapter. This must be 1 digit.
+     * "Chartboost Mediation" represents the Chartboost Mediation SDK’s major version that is compatible with this adapter. This must be 1 digit.
      * "Partner" represents the partner SDK’s major.minor.patch.x (where x is optional) version that is compatible with this adapter. This can be 3-4 digits.
      * "Adapter" represents this adapter’s version (starting with 0), which resets to 0 when the partner SDK’s version changes. This must be 1 digit.
      */
     override val adapterVersion: String
-        get() = BuildConfig.HELIUM_GOOGLE_BIDDING_ADAPTER_VERSION
+        get() = BuildConfig.CHARTBOOST_MEDIATION_GOOGLE_BIDDING_ADAPTER_VERSION
 
     /**
      * Get the partner name for internal uses.
@@ -138,7 +138,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         partnerConfiguration: PartnerConfiguration
     ): Result<Unit> {
         PartnerLogController.log(SETUP_STARTED)
-        // Since Helium is the mediator, no need to initialize Google Bidding's partner SDKs.
+        // Since Chartboost Mediation is the mediator, no need to initialize Google Bidding's partner SDKs.
         // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
         MobileAds.disableMediationAdapterInitialization(context)
 
@@ -242,12 +242,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Map<String, String> {
         PartnerLogController.log(BIDDER_INFO_FETCH_STARTED)
 
-        // Google-defined specs for Helium
+        // Google-defined specs for Chartboost Mediation
         val extras = Bundle()
         extras.putString("query_info_type", "requester_type_2")
 
         val adRequest = AdRequest.Builder()
-            .setRequestAgent("Helium")
+            .setRequestAgent("Chartboost")
             .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
             .build()
 
@@ -261,8 +261,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     adRequest,
                     object : QueryInfoGenerationCallback() {
                         override fun onSuccess(queryInfo: QueryInfo) {
-                            // Cache the QueryInfo so it can be looked up by the Helium placement name.
-                            placementToQueryInfoCache?.put(request.heliumPlacement, queryInfo)
+                            // Cache the QueryInfo so it can be looked up by the Chartboost Mediation placement name.
+                            placementToQueryInfoCache?.put(request.chartboostPlacement, queryInfo)
 
                             PartnerLogController.log(BIDDER_INFO_FETCH_SUCCEEDED)
                             continuation.resumeWith(
@@ -291,7 +291,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request An [PartnerAdLoadRequest] instance containing relevant data for the current ad load call.
-     * @param partnerAdListener A [PartnerAdListener] to notify Helium of ad events.
+     * @param partnerAdListener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
@@ -331,7 +331,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
         PartnerLogController.log(SHOW_STARTED)
-        val listener = listeners.remove(partnerAd.request.heliumPlacement)
+        val listener = listeners.remove(partnerAd.request.chartboostPlacement)
 
         return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
@@ -353,7 +353,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun invalidate(partnerAd: PartnerAd): Result<PartnerAd> {
         PartnerLogController.log(INVALIDATE_STARTED)
-        listeners.remove(partnerAd.request.heliumPlacement)
+        listeners.remove(partnerAd.request.chartboostPlacement)
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
         return when (partnerAd.request.format) {
@@ -382,11 +382,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     SETUP_FAILED,
                     "Initialization state: ${it.initializationState}. Description: ${it.description}"
                 )
-                Result.failure(HeliumAdException(HeliumError.HE_INITIALIZATION_FAILURE_UNKNOWN))
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_INITIALIZATION_FAILURE_UNKNOWN))
             }
         } ?: run {
             PartnerLogController.log(SETUP_FAILED, "Initialization status is null.")
-            Result.failure(HeliumAdException(HeliumError.HE_INITIALIZATION_FAILURE_UNKNOWN))
+            Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_INITIALIZATION_FAILURE_UNKNOWN))
         }
     }
 
@@ -395,7 +395,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request An [PartnerAdLoadRequest] instance containing relevant data for the current ad load call.
-     * @param listener A [PartnerAdListener] to notify Helium of ad events.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      */
     private suspend fun loadBannerAd(
         context: Context,
@@ -407,11 +407,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
+                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
+                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -441,7 +441,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         PartnerLogController.log(LOAD_FAILED, adError.message)
                         continuation.resume(
-                            Result.failure(HeliumAdException(getHeliumError(adError.code)))
+                            Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
                         )
                     }
 
@@ -485,7 +485,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request An [PartnerAdLoadRequest] instance containing data to load the ad with.
-     * @param listener A [PartnerAdListener] to notify Helium of ad events.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
@@ -495,18 +495,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
-        listeners[request.heliumPlacement] = listener
+        listeners[request.chartboostPlacement] = listener
 
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
+                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
+                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -532,7 +532,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
-                                Result.failure(HeliumAdException(getHeliumError(loadAdError.code)))
+                                Result.failure(ChartboostMediationAdException(getChartboostMediationError(loadAdError.code)))
                             )
                         }
                     }
@@ -546,7 +546,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param request The [PartnerAdLoadRequest] containing relevant data for the current ad load call.
-     * @param listener A [PartnerAdListener] to notify Helium of ad events.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
      */
@@ -556,18 +556,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
-        listeners[request.heliumPlacement] = listener
+        listeners[request.chartboostPlacement] = listener
 
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
                 val adInfo = constructAdInfo(request) ?: run {
                     PartnerLogController.log(
                         LOAD_FAILED,
-                        HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP.cause
+                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
                     )
                     continuation.resumeWith(
                         Result.failure(
-                            HeliumAdException(HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP)
+                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
                         )
                     )
                     return@launch
@@ -594,7 +594,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
                                 Result.failure(
-                                    HeliumAdException(getHeliumError(loadAdError.code))
+                                    ChartboostMediationAdException(getChartboostMediationError(loadAdError.code))
                                 )
                             )
                         }
@@ -620,7 +620,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(HeliumAdException(HeliumError.HE_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
+            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
         return suspendCoroutine { continuation ->
@@ -641,7 +641,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 PartnerLogController.log(SHOW_FAILED, adError.message)
                                 continuation.resume(
-                                    Result.failure(HeliumAdException(getHeliumError(adError.code)))
+                                    Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
                                 )
                             }
 
@@ -672,7 +672,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(HeliumAdException(HeliumError.HE_SHOW_FAILURE_AD_NOT_FOUND)))
+                continuation.resume(Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND)))
             }
         }
     }
@@ -682,7 +682,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @param context The current [Context].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
-     * @param listener A [PartnerAdListener] to notify Helium of ad events.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
@@ -693,7 +693,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(HeliumAdException(HeliumError.HE_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
+            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
         return suspendCoroutine { continuation ->
@@ -712,7 +712,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                             PartnerLogController.log(SHOW_FAILED, adError.message)
                             continuation.resume(
-                                Result.failure(HeliumAdException(getHeliumError(adError.code)))
+                                Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
                             )
                         }
 
@@ -751,7 +751,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(HeliumAdException(HeliumError.HE_SHOW_FAILURE_AD_NOT_FOUND)))
+                continuation.resume(Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND)))
             }
         }
     }
@@ -773,18 +773,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 Result.success(partnerAd)
             } else {
                 PartnerLogController.log(INVALIDATE_FAILED, "Ad is not an AdView.")
-                Result.failure(HeliumAdException(HeliumError.HE_INVALIDATE_FAILURE_WRONG_RESOURCE_TYPE))
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_INVALIDATE_FAILURE_WRONG_RESOURCE_TYPE))
             }
         } ?: run {
             PartnerLogController.log(INVALIDATE_FAILED, "Ad is null.")
-            Result.failure(HeliumAdException(HeliumError.HE_INVALIDATE_FAILURE_AD_NOT_FOUND))
+            Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_INVALIDATE_FAILURE_AD_NOT_FOUND))
         }
     }
 
     /**
-     * Get the equivalent Google Bidding ad format for a given Helium [AdFormat].
+     * Get the equivalent Google Bidding ad format for a given Chartboost Mediation [AdFormat].
      *
-     * @param format The Helium [AdFormat] to convert.
+     * @param format The Chartboost Mediation [AdFormat] to convert.
      *
      * @return The equivalent Google Bidding ad format.
      */
@@ -821,7 +821,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         }
 
         val queryInfo = placementToQueryInfoCache?.let { cache ->
-            cache.getIfPresent(request.heliumPlacement) ?: run {
+            cache.getIfPresent(request.chartboostPlacement) ?: run {
                 PartnerLogController.log(LOAD_FAILED, "QueryInfo is null.")
                 return null
             }
@@ -847,7 +847,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun buildRequest(adm: String, adInfo: AdInfo) =
         AdRequest.Builder()
             .setAdInfo(adInfo)
-            .setRequestAgent("Helium")
+            .setRequestAgent("Chartboost")
             .addNetworkExtrasBundle(AdMobAdapter::class.java, buildPrivacyConsents())
             .setAdString(adm)
             .build()
@@ -870,19 +870,19 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Convert a given Google Bidding error code into a [HeliumError].
+     * Convert a given Google Bidding error code into a [ChartboostMediationError].
      *
      * @param error The Google Bidding error code as an [Int].
      *
-     * @return The corresponding [HeliumError].
+     * @return The corresponding [ChartboostMediationError].
      */
-    private fun getHeliumError(error: Int) = when (error) {
-        AdRequest.ERROR_CODE_APP_ID_MISSING -> HeliumError.HE_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
-        AdRequest.ERROR_CODE_INTERNAL_ERROR -> HeliumError.HE_INTERNAL_ERROR
-        AdRequest.ERROR_CODE_INVALID_AD_STRING -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_MARKUP
-        AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> HeliumError.HE_LOAD_FAILURE_INVALID_AD_REQUEST
-        AdRequest.ERROR_CODE_NETWORK_ERROR -> HeliumError.HE_NO_CONNECTIVITY
-        AdRequest.ERROR_CODE_NO_FILL -> HeliumError.HE_LOAD_FAILURE_NO_FILL
-        else -> HeliumError.HE_PARTNER_ERROR
+    private fun getChartboostMediationError(error: Int) = when (error) {
+        AdRequest.ERROR_CODE_APP_ID_MISSING -> ChartboostMediationError.CM_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
+        AdRequest.ERROR_CODE_INTERNAL_ERROR -> ChartboostMediationError.CM_INTERNAL_ERROR
+        AdRequest.ERROR_CODE_INVALID_AD_STRING -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP
+        AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_REQUEST
+        AdRequest.ERROR_CODE_NETWORK_ERROR -> ChartboostMediationError.CM_NO_CONNECTIVITY
+        AdRequest.ERROR_CODE_NO_FILL -> ChartboostMediationError.CM_LOAD_FAILURE_NO_FILL
+        else -> ChartboostMediationError.CM_PARTNER_ERROR
     }
 }
