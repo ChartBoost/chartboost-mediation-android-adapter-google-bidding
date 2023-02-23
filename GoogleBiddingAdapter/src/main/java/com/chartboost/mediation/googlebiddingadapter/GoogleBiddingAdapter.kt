@@ -318,7 +318,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 request,
                 partnerAdListener
             )
+            AdFormat.REWARDED_INTERSTITIAL -> loadRewardedInterstitialAd(
+                context,
+                request,
+                partnerAdListener
+            )
         }
+    }
+
+    private suspend fun loadRewardedInterstitialAd(context: Context, request: PartnerAdLoadRequest, partnerAdListener: PartnerAdListener): Result<PartnerAd> {
+        TODO()
     }
 
     /**
@@ -341,7 +350,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
             AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
+            AdFormat.REWARDED_INTERSTITIAL -> showRewardedInterstitialAd(context, partnerAd, listener)
         }
+    }
+
+    private suspend fun showRewardedInterstitialAd(context: Context, partnerAd: PartnerAd, listener: PartnerAdListener?): Result<PartnerAd> {
+        TODO()
     }
 
     /**
