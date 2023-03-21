@@ -67,7 +67,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * A map of Chartboost Mediation's listeners for the corresponding Chartboost placements.
+     * A map of Chartboost Mediation's listeners for the corresponding load identifier.
      */
     private val listeners = mutableMapOf<String, PartnerAdListener>()
 
@@ -318,6 +318,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 request,
                 partnerAdListener
             )
+            else -> {
+                PartnerLogController.log(LOAD_FAILED)
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_UNSUPPORTED_AD_FORMAT))
+            }
         }
     }
 
@@ -331,7 +335,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
         PartnerLogController.log(SHOW_STARTED)
-        val listener = listeners.remove(partnerAd.request.chartboostPlacement)
+        val listener = listeners.remove(partnerAd.request.identifier)
 
         return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
@@ -341,6 +345,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
             AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
+            else -> {
+                PartnerLogController.log(SHOW_FAILED)
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_UNSUPPORTED_AD_FORMAT))
+            }
         }
     }
 
@@ -353,7 +361,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun invalidate(partnerAd: PartnerAd): Result<PartnerAd> {
         PartnerLogController.log(INVALIDATE_STARTED)
-        listeners.remove(partnerAd.request.chartboostPlacement)
+        listeners.remove(partnerAd.request.identifier)
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
         return when (partnerAd.request.format) {
@@ -495,7 +503,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
-        listeners[request.chartboostPlacement] = listener
+        listeners[request.identifier] = listener
 
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
@@ -556,7 +564,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listener: PartnerAdListener
     ): Result<PartnerAd> {
         // Save the listener for later use.
-        listeners[request.chartboostPlacement] = listener
+        listeners[request.identifier] = listener
 
         return suspendCoroutine { continuation ->
             CoroutineScope(Main).launch {
