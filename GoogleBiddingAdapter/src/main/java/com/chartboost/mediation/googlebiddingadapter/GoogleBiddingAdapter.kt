@@ -27,6 +27,8 @@ import com.google.android.gms.ads.query.QueryInfo
 import com.google.android.gms.ads.query.QueryInfoGenerationCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
+import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import kotlinx.coroutines.CoroutineScope
@@ -319,8 +321,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 partnerAdListener
             )
             else -> {
-                PartnerLogController.log(LOAD_FAILED)
-                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_UNSUPPORTED_AD_FORMAT))
+                if (request.format.key == "rewarded_interstitial") {
+                    loadRewardedInterstitialAd(
+                        context,
+                        request,
+                        partnerAdListener
+                    )
+                } else {
+                    PartnerLogController.log(LOAD_FAILED)
+                    Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_UNSUPPORTED_AD_FORMAT))
+                }
             }
         }
     }
@@ -346,8 +356,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
             AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
             else -> {
-                PartnerLogController.log(SHOW_FAILED)
-                Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_UNSUPPORTED_AD_FORMAT))
+                if (partnerAd.request.format.key == "rewarded_interstitial") {
+                    showRewardedInterstitialAd(context, partnerAd, listener)
+                } else {
+                    PartnerLogController.log(SHOW_FAILED)
+                    Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_UNSUPPORTED_AD_FORMAT))
+                }
             }
         }
     }
@@ -449,7 +463,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         PartnerLogController.log(LOAD_FAILED, adError.message)
                         continuation.resume(
-                            Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
+                            Result.failure(
+                                ChartboostMediationAdException(
+                                    getChartboostMediationError(adError.code)
+                                )
+                            )
                         )
                     }
 
@@ -540,7 +558,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
-                                Result.failure(ChartboostMediationAdException(getChartboostMediationError(loadAdError.code)))
+                                Result.failure(
+                                    ChartboostMediationAdException(
+                                        getChartboostMediationError(loadAdError.code)
+                                    )
+                                )
                             )
                         }
                     }
@@ -602,7 +624,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
                             continuation.resume(
                                 Result.failure(
-                                    ChartboostMediationAdException(getChartboostMediationError(loadAdError.code))
+                                    ChartboostMediationAdException(
+                                        getChartboostMediationError(
+                                            loadAdError.code
+                                        )
+                                    )
                                 )
                             )
                         }
@@ -611,6 +637,74 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
         }
     }
+
+    /**
+     * Attempt to load a Google Bidding rewarded interstitial ad.
+     *
+     * @param context The current [Context].
+     * @param request The [PartnerAdLoadRequest] containing relevant data for the current ad load call.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
+     *
+     * @return Result.success(PartnerAd) if the ad was successfully loaded, Result.failure(Exception) otherwise.
+     */
+    private suspend fun loadRewardedInterstitialAd(
+        context: Context,
+        request: PartnerAdLoadRequest,
+        listener: PartnerAdListener
+    ): Result<PartnerAd> {
+        // Save the listener for later use.
+        listeners[request.identifier] = listener
+
+        return suspendCoroutine { continuation ->
+            CoroutineScope(Main).launch {
+                val adInfo = constructAdInfo(request) ?: run {
+                    PartnerLogController.log(
+                        LOAD_FAILED,
+                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
+                    )
+                    continuation.resumeWith(
+                        Result.failure(
+                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
+                        )
+                    )
+                    return@launch
+                }
+
+                RewardedInterstitialAd.load(context,
+                    request.partnerPlacement,
+                    buildRequest(adInfo.adString, adInfo),
+                    object : RewardedInterstitialAdLoadCallback() {
+                        override fun onAdLoaded(rewardedInterstitialAd: RewardedInterstitialAd) {
+                            PartnerLogController.log(LOAD_SUCCEEDED)
+                            continuation.resume(
+                                Result.success(
+                                    PartnerAd(
+                                        ad = rewardedInterstitialAd,
+                                        details = emptyMap(),
+                                        request = request
+                                    )
+                                )
+                            )
+                        }
+
+                        override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                            PartnerLogController.log(LOAD_FAILED, loadAdError.message)
+                            continuation.resume(
+                                Result.failure(
+                                    ChartboostMediationAdException(
+                                        getChartboostMediationError(
+                                            loadAdError.code
+                                        )
+                                    )
+                                )
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+
 
     /**
      * Attempt to show a Google Bidding interstitial ad on the main thread.
@@ -649,7 +743,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 PartnerLogController.log(SHOW_FAILED, adError.message)
                                 continuation.resume(
-                                    Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
+                                    Result.failure(
+                                        ChartboostMediationAdException(
+                                            getChartboostMediationError(adError.code)
+                                        )
+                                    )
                                 )
                             }
 
@@ -680,7 +778,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND)))
+                continuation.resume(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
+                        )
+                    )
+                )
             }
         }
     }
@@ -720,7 +824,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                             PartnerLogController.log(SHOW_FAILED, adError.message)
                             continuation.resume(
-                                Result.failure(ChartboostMediationAdException(getChartboostMediationError(adError.code)))
+                                Result.failure(
+                                    ChartboostMediationAdException(
+                                        getChartboostMediationError(adError.code)
+                                    )
+                                )
                             )
                         }
 
@@ -759,10 +867,99 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND)))
+                continuation.resume(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
+                        )
+                    )
+                )
             }
         }
     }
+
+    /**
+     * Attempt to show a Google Bidding rewarded interstitial ad on the main thread.
+     *
+     * @param context The current [Context].
+     * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
+     * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
+     *
+     * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
+     */
+    private suspend fun showRewardedInterstitialAd(
+        context: Context,
+        partnerAd: PartnerAd,
+        listener: PartnerAdListener?
+    ): Result<PartnerAd> {
+        if (context !is Activity) {
+            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
+            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
+        }
+
+        return suspendCoroutine { continuation ->
+            partnerAd.ad?.let { ad ->
+                CoroutineScope(Main).launch {
+                    val rewardedInterstitialAd = ad as RewardedInterstitialAd
+                    rewardedInterstitialAd.fullScreenContentCallback =
+                        object : FullScreenContentCallback() {
+                            override fun onAdImpression() {
+                                PartnerLogController.log(DID_TRACK_IMPRESSION)
+                                listener?.onPartnerAdImpression(partnerAd)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                    )
+                            }
+
+                            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                PartnerLogController.log(SHOW_FAILED, adError.message)
+                                continuation.resume(
+                                    Result.failure(
+                                        ChartboostMediationAdException(
+                                            getChartboostMediationError(adError.code)
+                                        )
+                                    )
+                                )
+                            }
+
+                            override fun onAdShowedFullScreenContent() {
+                                PartnerLogController.log(SHOW_SUCCEEDED)
+                                continuation.resume(Result.success(partnerAd))
+                            }
+
+                            override fun onAdClicked() {
+                                PartnerLogController.log(DID_CLICK)
+                                listener?.onPartnerAdClicked(partnerAd)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                                    )
+                            }
+
+                            override fun onAdDismissedFullScreenContent() {
+                                PartnerLogController.log(DID_DISMISS)
+                                listener?.onPartnerAdDismissed(partnerAd, null)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                    )
+                            }
+                        }
+
+                    rewardedInterstitialAd.show(context) {
+                        PartnerLogController.log(DID_REWARD)
+                        listener?.onPartnerAdRewarded(partnerAd)
+                            ?: PartnerLogController.log(
+                                CUSTOM,
+                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
+                            )
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * Destroy the current Google Bidding banner ad.
