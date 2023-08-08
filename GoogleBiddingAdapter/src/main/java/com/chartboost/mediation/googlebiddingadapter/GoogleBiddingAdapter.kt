@@ -291,19 +291,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 request,
                 partnerAdListener
             )
-
             AdFormat.REWARDED -> loadRewardedAd(
                 context,
                 request,
                 partnerAdListener
             )
-
             AdFormat.BANNER -> loadBannerAd(
                 context,
                 request,
                 partnerAdListener
             )
-
             else -> {
                 if (request.format.key == "rewarded_interstitial") {
                     loadRewardedInterstitialAd(
@@ -337,7 +334,6 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
-
             AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
             else -> {
