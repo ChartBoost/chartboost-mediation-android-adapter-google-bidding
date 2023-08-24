@@ -34,7 +34,7 @@ android {
         minSdk = 21
         targetSdk = 33
         // If you touch the following line, don't forget to update scripts/get_rc_version.zsh
-        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "4.22.2.0.0"
+        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "4.22.3.0.0"
         buildConfigField("String", "CHARTBOOST_MEDIATION_GOOGLE_BIDDING_ADAPTER_VERSION", "\"${android.defaultConfig.versionName}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -69,7 +69,7 @@ dependencies {
     "remoteImplementation"("com.chartboost:chartboost-mediation-sdk:4.0.0")
 
     // Partner SDK
-    implementation("com.google.android.gms:play-services-ads:22.2.0")
+    implementation("com.google.android.gms:play-services-ads:22.3.0")
 
     // Adapter Dependencies
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
