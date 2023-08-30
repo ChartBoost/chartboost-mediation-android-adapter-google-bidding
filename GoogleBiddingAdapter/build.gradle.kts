@@ -69,7 +69,7 @@ dependencies {
     "remoteImplementation"("com.chartboost:chartboost-mediation-sdk:4.0.0")
 
     // Partner SDK
-    implementation("com.google.android.gms:play-services-ads:22.2.0")
+    implementation("com.google.android.gms:play-services-ads:22.1.0")
 
     // Adapter Dependencies
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
