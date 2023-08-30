@@ -32,8 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class GoogleBiddingAdapter : PartnerAdapter {
     companion object {
@@ -128,9 +128,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
         // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
         MobileAds.disableMediationAdapterInitialization(context)
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<Unit>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             MobileAds.initialize(context) { status ->
-                continuation.resume(getInitResult(status.adapterStatusMap[MobileAds::class.java.name]))
+                resumeOnce(getInitResult(status.adapterStatusMap[MobileAds::class.java.name]))
             }
         }
     }
@@ -239,7 +245,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         val adFormat = getGoogleBiddingAdFormat(request.format)
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Map<String, String>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             CoroutineScope(Dispatchers.IO).launch {
                 QueryInfo.generate(
                     context,
@@ -248,20 +260,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     object : QueryInfoGenerationCallback() {
                         override fun onSuccess(queryInfo: QueryInfo) {
                             PartnerLogController.log(BIDDER_INFO_FETCH_SUCCEEDED)
-                            continuation.resumeWith(
-                                Result.success(
-                                    mapOf("token" to queryInfo.query)
-                                )
-                            )
+                            resumeOnce(mapOf("token" to queryInfo.query))
                         }
 
                         override fun onFailure(error: String) {
                             PartnerLogController.log(BIDDER_INFO_FETCH_FAILED, error)
-                            continuation.resumeWith(
-                                Result.success(
-                                    emptyMap()
-                                )
-                            )
+                            resumeOnce(emptyMap())
                         }
                     }
                 )
@@ -404,7 +408,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
         request: PartnerAdLoadRequest,
         listener: PartnerAdListener
     ): Result<PartnerAd> {
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             CoroutineScope(Main).launch {
                 val adm = request.adm ?: run {
                     PartnerLogController.log(
@@ -437,12 +447,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                     override fun onAdLoaded() {
                         PartnerLogController.log(LOAD_SUCCEEDED)
-                        continuation.resume(Result.success(partnerAd))
+                        resumeOnce(Result.success(partnerAd))
                     }
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         PartnerLogController.log(LOAD_FAILED, adError.message)
-                        continuation.resume(
+                        resumeOnce(
                             Result.failure(
                                 ChartboostMediationAdException(
                                     getChartboostMediationError(adError.code)
@@ -503,7 +513,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
         // Save the listener for later use.
         listeners[request.identifier] = listener
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             CoroutineScope(Main).launch {
                 val adm = request.adm ?: run {
                     PartnerLogController.log(
@@ -524,7 +540,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     object : InterstitialAdLoadCallback() {
                         override fun onAdLoaded(interstitialAd: InterstitialAd) {
                             PartnerLogController.log(LOAD_SUCCEEDED)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.success(
                                     PartnerAd(
                                         ad = interstitialAd,
@@ -537,7 +553,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(loadAdError.code)
@@ -568,7 +584,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
         // Save the listener for later use.
         listeners[request.identifier] = listener
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             CoroutineScope(Main).launch {
                 val adm = request.adm ?: run {
                     PartnerLogController.log(
@@ -589,7 +611,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     object : RewardedAdLoadCallback() {
                         override fun onAdLoaded(rewardedAd: RewardedAd) {
                             PartnerLogController.log(LOAD_SUCCEEDED)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.success(
                                     PartnerAd(
                                         ad = rewardedAd,
@@ -602,7 +624,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(
@@ -635,7 +657,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
         // Save the listener for later use.
         listeners[request.identifier] = listener
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             CoroutineScope(Main).launch {
                 val adm = request.adm ?: run {
                     PartnerLogController.log(
@@ -656,7 +684,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     object : RewardedInterstitialAdLoadCallback() {
                         override fun onAdLoaded(rewardedInterstitialAd: RewardedInterstitialAd) {
                             PartnerLogController.log(LOAD_SUCCEEDED)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.success(
                                     PartnerAd(
                                         ad = rewardedInterstitialAd,
@@ -669,7 +697,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                             PartnerLogController.log(LOAD_FAILED, loadAdError.message)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(
@@ -705,7 +733,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val interstitialAd = ad as InterstitialAd
@@ -722,7 +756,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 PartnerLogController.log(SHOW_FAILED, adError.message)
-                                continuation.resume(
+                                resumeOnce(
                                     Result.failure(
                                         ChartboostMediationAdException(
                                             getChartboostMediationError(adError.code)
@@ -733,7 +767,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                             override fun onAdShowedFullScreenContent() {
                                 PartnerLogController.log(SHOW_SUCCEEDED)
-                                continuation.resume(Result.success(partnerAd))
+                                resumeOnce(Result.success(partnerAd))
                             }
 
                             override fun onAdClicked() {
@@ -758,7 +792,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(
+                resumeOnce(
                     Result.failure(
                         ChartboostMediationAdException(
                             ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
@@ -788,7 +822,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedAd = ad as RewardedAd
@@ -803,7 +843,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                             PartnerLogController.log(SHOW_FAILED, adError.message)
-                            continuation.resume(
+                            resumeOnce(
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(adError.code)
@@ -814,7 +854,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdShowedFullScreenContent() {
                             PartnerLogController.log(SHOW_SUCCEEDED)
-                            continuation.resume(Result.success(partnerAd))
+                            resumeOnce(Result.success(partnerAd))
                         }
 
                         override fun onAdClicked() {
@@ -847,7 +887,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
-                continuation.resume(
+                resumeOnce(
                     Result.failure(
                         ChartboostMediationAdException(
                             ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
@@ -877,7 +917,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
         }
 
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
+            fun resumeOnce(result: Result<PartnerAd>) {
+                if (continuation.isActive) {
+                    continuation.resume(result)
+                }
+            }
+
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedInterstitialAd = ad as RewardedInterstitialAd
@@ -894,7 +940,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                                 PartnerLogController.log(SHOW_FAILED, adError.message)
-                                continuation.resume(
+                                resumeOnce(
                                     Result.failure(
                                         ChartboostMediationAdException(
                                             getChartboostMediationError(adError.code)
@@ -905,7 +951,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                             override fun onAdShowedFullScreenContent() {
                                 PartnerLogController.log(SHOW_SUCCEEDED)
-                                continuation.resume(Result.success(partnerAd))
+                                resumeOnce(Result.success(partnerAd))
                             }
 
                             override fun onAdClicked() {
