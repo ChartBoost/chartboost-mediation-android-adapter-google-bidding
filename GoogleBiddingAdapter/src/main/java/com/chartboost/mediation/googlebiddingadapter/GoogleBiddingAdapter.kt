@@ -1019,11 +1019,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The equivalent Google Bidding ad format.
      */
-    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format) {
-        AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER.key
-        AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL.key
-        AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED.key
-        else -> com.google.android.gms.ads.AdFormat.BANNER.key
+    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format.key) {
+        AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER
+        AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
+        AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED
+        else -> com.google.android.gms.ads.AdFormat.BANNER
     }
 
     /**
