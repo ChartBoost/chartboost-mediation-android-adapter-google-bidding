@@ -300,7 +300,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 request,
                 partnerAdListener
             )
-            AdFormat.BANNER -> loadBannerAd(
+            AdFormat.BANNER, AdFormat.ADAPTIVE_BANNER -> loadBannerAd(
                 context,
                 request,
                 partnerAdListener
@@ -334,7 +334,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
-            AdFormat.BANNER -> {
+            AdFormat.BANNER, AdFormat.ADAPTIVE_BANNER -> {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
@@ -364,7 +364,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
         return when (partnerAd.request.format) {
-            AdFormat.BANNER -> destroyBannerAd(partnerAd)
+            AdFormat.BANNER, AdFormat.ADAPTIVE_BANNER -> destroyBannerAd(partnerAd)
             else -> {
                 PartnerLogController.log(INVALIDATE_SUCCEEDED)
                 Result.success(partnerAd)
@@ -1020,7 +1020,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @return The equivalent Google Bidding ad format.
      */
     private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format) {
-        AdFormat.BANNER -> com.google.android.gms.ads.AdFormat.BANNER
+        AdFormat.BANNER, AdFormat.ADAPTIVE_BANNER -> com.google.android.gms.ads.AdFormat.BANNER
         AdFormat.INTERSTITIAL -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
         AdFormat.REWARDED -> com.google.android.gms.ads.AdFormat.REWARDED
         else -> com.google.android.gms.ads.AdFormat.BANNER
