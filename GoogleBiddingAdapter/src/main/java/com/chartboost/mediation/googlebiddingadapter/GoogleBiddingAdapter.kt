@@ -289,18 +289,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         PartnerLogController.log(LOAD_STARTED)
 
-        return when (request.format) {
-            AdFormat.INTERSTITIAL -> loadInterstitialAd(
+        return when (request.format.key) {
+            AdFormat.INTERSTITIAL.key -> loadInterstitialAd(
                 context,
                 request,
                 partnerAdListener
             )
-            AdFormat.REWARDED -> loadRewardedAd(
+            AdFormat.REWARDED.key -> loadRewardedAd(
                 context,
                 request,
                 partnerAdListener
             )
-            AdFormat.BANNER -> loadBannerAd(
+            AdFormat.BANNER.key, "adaptive_banner" -> loadBannerAd(
                 context,
                 request,
                 partnerAdListener
@@ -332,14 +332,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
         PartnerLogController.log(SHOW_STARTED)
         val listener = listeners.remove(partnerAd.request.identifier)
 
-        return when (partnerAd.request.format) {
+        return when (partnerAd.request.format.key) {
             // Banner ads do not have a separate "show" mechanism.
-            AdFormat.BANNER -> {
+            AdFormat.BANNER.key, "adaptive_banner" -> {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
-            AdFormat.INTERSTITIAL -> showInterstitialAd(context, partnerAd, listener)
-            AdFormat.REWARDED -> showRewardedAd(context, partnerAd, listener)
+            AdFormat.INTERSTITIAL.key -> showInterstitialAd(context, partnerAd, listener)
+            AdFormat.REWARDED.key -> showRewardedAd(context, partnerAd, listener)
             else -> {
                 if (partnerAd.request.format.key == "rewarded_interstitial") {
                     showRewardedInterstitialAd(context, partnerAd, listener)
@@ -363,8 +363,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listeners.remove(partnerAd.request.identifier)
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
-        return when (partnerAd.request.format) {
-            AdFormat.BANNER -> destroyBannerAd(partnerAd)
+        return when (partnerAd.request.format.key) {
+            AdFormat.BANNER.key, "adaptive_banner" -> destroyBannerAd(partnerAd)
             else -> {
                 PartnerLogController.log(INVALIDATE_SUCCEEDED)
                 Result.success(partnerAd)
@@ -1019,10 +1019,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The equivalent Google Bidding ad format.
      */
-    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format) {
-        AdFormat.BANNER -> com.google.android.gms.ads.AdFormat.BANNER
-        AdFormat.INTERSTITIAL -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
-        AdFormat.REWARDED -> com.google.android.gms.ads.AdFormat.REWARDED
+    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format.key) {
+        AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER
+        AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
+        AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED
         else -> com.google.android.gms.ads.AdFormat.BANNER
     }
 
