@@ -430,13 +430,24 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
 
                 val bannerAd = AdView(context)
+                val adSize = getGoogleBiddingAdSize(context, request.size, request.format.key == "adaptive_banner")
+
+                val details = if (request.format.key == "adaptive_banner") {
+                    mapOf(
+                        "banner_width_dips" to "${adSize.width}",
+                        "banner_height_dips" to "${adSize.height}"
+                    )
+                } else {
+                    emptyMap()
+                }
+
                 val partnerAd = PartnerAd(
                     ad = bannerAd,
-                    details = emptyMap(),
+                    details = details,
                     request = request,
                 )
 
-                bannerAd.setAdSize(getGoogleBiddingAdSize(request.size))
+                bannerAd.setAdSize(adSize)
                 bannerAd.adUnitId = request.partnerPlacement
                 bannerAd.loadAd(buildRequest(adm))
                 bannerAd.adListener = object : AdListener() {
@@ -481,11 +492,19 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Find the most appropriate Google Bidding ad size for the given screen area based on height.
      *
+     * @param context The current [Context].
      * @param size The [Size] to parse for conversion.
+     * @param isAdaptive whether or not the placement is for an adaptive banner.
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getGoogleBiddingAdSize(size: Size?): AdSize {
+    private fun getGoogleBiddingAdSize(context: Context, size: Size?, isAdaptive: Boolean = false): AdSize {
+        if (isAdaptive) {
+            return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                context, size?.width ?: AdSize.BANNER.width
+            )
+        }
+        
         return size?.height?.let {
             when {
                 it in 50 until 90 -> AdSize.BANNER
