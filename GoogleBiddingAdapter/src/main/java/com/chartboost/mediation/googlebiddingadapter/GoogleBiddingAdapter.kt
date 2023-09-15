@@ -430,20 +430,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 }
 
                 val bannerAd = AdView(context)
-                val partnerAd = PartnerAd(
-                    ad = bannerAd,
-                    details = mutableMapOf(),
-                    request = request,
-                )
-
                 val adSize = getGoogleBiddingAdSize(context, request.size, request.format.key == "adaptive_banner")
 
-                if(request.format.key == "adaptive_banner") {
-                    (partnerAd.details as MutableMap).let {
-                        it["banner_width_dips"] = "${adSize.width}"
-                        it["banner_height_dips"] = "${adSize.height}"
-                    }
+                val details = if (request.format.key == "adaptive_banner") {
+                    mapOf(
+                        "banner_width_dips" to "${adSize.width}",
+                        "banner_height_dips" to "${adSize.height}"
+                    )
+                } else {
+                    emptyMap()
                 }
+
+                val partnerAd = PartnerAd(
+                    ad = bannerAd,
+                    details = details,
+                    request = request,
+                )
 
                 bannerAd.setAdSize(adSize)
                 bannerAd.adUnitId = request.partnerPlacement
@@ -490,12 +492,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Find the most appropriate Google Bidding ad size for the given screen area based on height.
      *
+     * @param context The current [Context].
      * @param size The [Size] to parse for conversion.
+     * @param isAdaptive whether or not the placement is for an adaptive banner.
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
     private fun getGoogleBiddingAdSize(context: Context, size: Size?, isAdaptive: Boolean = false): AdSize {
-        if(isAdaptive) {
+        if (isAdaptive) {
             return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
                 context, size?.width ?: AdSize.BANNER.width
             )
