@@ -436,9 +436,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     request = request,
                 )
 
-                val adSize = getGoogleBiddingAdSize(context, request.size, request.isAdaptiveBanner)
+                val adSize = getGoogleBiddingAdSize(context, request.size, request.format.key == "adaptive_banner")
 
-                if(request.isAdaptiveBanner) {
+                if(request.format.key == "adaptive_banner") {
                     (partnerAd.details as MutableMap).let {
                         it["banner_width_dips"] = "${adSize.width}"
                         it["banner_height_dips"] = "${adSize.height}"
