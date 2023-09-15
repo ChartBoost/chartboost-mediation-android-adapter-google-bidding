@@ -432,11 +432,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val bannerAd = AdView(context)
                 val partnerAd = PartnerAd(
                     ad = bannerAd,
-                    details = emptyMap(),
+                    details = mutableMapOf(),
                     request = request,
                 )
 
-                bannerAd.setAdSize(getGoogleBiddingAdSize(request.size))
+                val adSize = getGoogleBiddingAdSize(context, request.size, request.isAdaptiveBanner)
+
+                if(request.isAdaptiveBanner) {
+                    (partnerAd.details as MutableMap).let {
+                        it["banner_width_dips"] = "${adSize.width}"
+                        it["banner_height_dips"] = "${adSize.height}"
+                    }
+                }
+
+                bannerAd.setAdSize(adSize)
                 bannerAd.adUnitId = request.partnerPlacement
                 bannerAd.loadAd(buildRequest(adm))
                 bannerAd.adListener = object : AdListener() {
@@ -485,7 +494,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getGoogleBiddingAdSize(size: Size?): AdSize {
+    private fun getGoogleBiddingAdSize(context: Context, size: Size?, isAdaptive: Boolean = false): AdSize {
+        if(isAdaptive) {
+            return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                context, size?.width ?: AdSize.BANNER.width
+            )
+        }
+        
         return size?.height?.let {
             when {
                 it in 50 until 90 -> AdSize.BANNER
