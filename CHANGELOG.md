@@ -4,7 +4,7 @@ Note the first digit of every adapter version corresponds to the major version o
 Adapters are compatible with any Chartboost Mediation SDK version within that major version.
 
 ### 4.22.3.0.4
-- Offload `setRequestConfiguration()` calls to background threads to avoid ANRs.
+- Offload `setRequestConfiguration()` and `disableMediationAdapterInitialization()` calls to background threads to avoid ANRs.
 
 ### 4.22.3.0.3
 - Add support for adaptive banner sizes.
