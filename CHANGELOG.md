@@ -18,8 +18,14 @@ Adapters are compatible with any Chartboost Mediation SDK version within that ma
 ### 4.22.3.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 22.3.0.
 
+### 4.22.2.0.1
+- Offload `setRequestConfiguration()` and `disableMediationAdapterInitialization()` calls to background threads to avoid ANRs.
+
 ### 4.22.2.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 22.2.0.
+
+### 4.22.1.0.2
+- Offload `setRequestConfiguration()` and `disableMediationAdapterInitialization()` calls to background threads to avoid ANRs.
 
 ### 4.22.1.0.1
 - Guard against multiple continuation resumes wherever possible. 
