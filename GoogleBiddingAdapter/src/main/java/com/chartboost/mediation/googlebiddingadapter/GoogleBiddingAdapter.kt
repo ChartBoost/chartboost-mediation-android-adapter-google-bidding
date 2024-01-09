@@ -13,12 +13,57 @@ import android.os.Bundle
 import android.text.TextUtils
 import android.util.Size
 import android.view.View.GONE
-import com.chartboost.heliumsdk.domain.*
 import com.chartboost.heliumsdk.domain.AdFormat
+import com.chartboost.heliumsdk.domain.ChartboostMediationAdException
+import com.chartboost.heliumsdk.domain.ChartboostMediationError
+import com.chartboost.heliumsdk.domain.GdprConsentStatus
+import com.chartboost.heliumsdk.domain.PartnerAd
+import com.chartboost.heliumsdk.domain.PartnerAdListener
+import com.chartboost.heliumsdk.domain.PartnerAdLoadRequest
+import com.chartboost.heliumsdk.domain.PartnerAdapter
+import com.chartboost.heliumsdk.domain.PartnerConfiguration
+import com.chartboost.heliumsdk.domain.PreBidRequest
 import com.chartboost.heliumsdk.utils.PartnerLogController
-import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.*
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_FAILED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_STARTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_SUCCEEDED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.CCPA_CONSENT_DENIED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.CCPA_CONSENT_GRANTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.COPPA_NOT_SUBJECT
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.COPPA_SUBJECT
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.CUSTOM
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_CLICK
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_DISMISS
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_REWARD
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_TRACK_IMPRESSION
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_APPLICABLE
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_DENIED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_GRANTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_UNKNOWN
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_NOT_APPLICABLE
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_UNKNOWN
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_FAILED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_STARTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_SUCCEEDED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_FAILED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_STARTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_SUCCEEDED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_FAILED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_STARTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_SUCCEEDED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_FAILED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_STARTED
+import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_SUCCEEDED
 import com.google.ads.mediation.admob.AdMobAdapter
-import com.google.android.gms.ads.*
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.initialization.AdapterStatus
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
@@ -28,6 +73,7 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
@@ -36,7 +82,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
-import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 
 class GoogleBiddingAdapter : PartnerAdapter {
@@ -311,16 +356,19 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 request,
                 partnerAdListener
             )
+
             AdFormat.REWARDED.key -> loadRewardedAd(
                 context,
                 request,
                 partnerAdListener
             )
+
             AdFormat.BANNER.key, "adaptive_banner" -> loadBannerAd(
                 context,
                 request,
                 partnerAdListener
             )
+
             else -> {
                 if (request.format.key == "rewarded_interstitial") {
                     loadRewardedInterstitialAd(
@@ -354,6 +402,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
+
             AdFormat.INTERSTITIAL.key -> showInterstitialAd(context, partnerAd, listener)
             AdFormat.REWARDED.key -> showRewardedAd(context, partnerAd, listener)
             else -> {
@@ -520,7 +569,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 context, size?.width ?: AdSize.BANNER.width
             )
         }
-        
+
         return size?.height?.let {
             when {
                 it in 50 until 90 -> AdSize.BANNER
@@ -778,7 +827,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val interstitialAd = ad as InterstitialAd
-                    interstitialAd.fullScreenContentCallback = createInterstitialAdFullscreenContentCallback(listener, partnerAd, WeakReference(continuation))
+                    interstitialAd.fullScreenContentCallback =
+                        createInterstitialAdFullscreenContentCallback(listener, partnerAd, WeakReference(continuation))
                     interstitialAd.show(context)
                 }
             } ?: run {
@@ -867,16 +917,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
         }
 
         return suspendCancellableCoroutine { continuation ->
-            fun resumeOnce(result: Result<PartnerAd>) {
-                if (continuation.isActive) {
-                    continuation.resume(result)
-                }
-            }
-
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedInterstitialAd = ad as RewardedInterstitialAd
-                    rewardedInterstitialAd.fullScreenContentCallback = createRewardedInterstitialFullScreenContentCallback(listener, partnerAd, WeakReference(continuation))
+                    rewardedInterstitialAd.fullScreenContentCallback =
+                        createRewardedInterstitialFullScreenContentCallback(listener, partnerAd, WeakReference(continuation))
                     rewardedInterstitialAd.show(context) {
                         PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd)
@@ -981,8 +1026,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun createInterstitialAdFullscreenContentCallback(
         listener: PartnerAdListener?,
         partnerAd: PartnerAd,
-        continuation: WeakReference<Continuation<Result<PartnerAd>>>
+        weakContinuation: WeakReference<CancellableContinuation<Result<PartnerAd>>>
     ) = object : FullScreenContentCallback() {
+
+        fun resumeOnce(result: Result<PartnerAd>) {
+            val continuation = weakContinuation.get()
+            if (continuation?.isActive == true) {
+                continuation.resume(result)
+            }
+        }
+
         override fun onAdImpression() {
             PartnerLogController.log(DID_TRACK_IMPRESSION)
             listener?.onPartnerAdImpression(partnerAd)
@@ -994,7 +1047,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
             PartnerLogController.log(SHOW_FAILED, adError.message)
-            continuation.get()?.resume(
+            resumeOnce(
                 Result.failure(
                     ChartboostMediationAdException(
                         getChartboostMediationError(adError.code)
@@ -1005,7 +1058,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdShowedFullScreenContent() {
             PartnerLogController.log(SHOW_SUCCEEDED)
-            continuation.get()?.resume(Result.success(partnerAd))
+            resumeOnce(Result.success(partnerAd))
         }
 
         override fun onAdClicked() {
@@ -1030,8 +1083,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun createRewardedFullScreenContentCallback(
         listener: PartnerAdListener?,
         partnerAd: PartnerAd,
-        continuation: WeakReference<Continuation<Result<PartnerAd>>>
+        weakContinuation: WeakReference<CancellableContinuation<Result<PartnerAd>>>
     ) = object : FullScreenContentCallback() {
+
+        fun resumeOnce(result: Result<PartnerAd>) {
+            val continuation = weakContinuation.get()
+            if (continuation?.isActive == true) {
+                continuation.resume(result)
+            }
+        }
+
         override fun onAdImpression() {
             PartnerLogController.log(DID_TRACK_IMPRESSION)
             listener?.onPartnerAdImpression(partnerAd) ?: PartnerLogController.log(
@@ -1042,7 +1103,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
             PartnerLogController.log(SHOW_FAILED, adError.message)
-            continuation.get()?.resume(
+            resumeOnce(
                 Result.failure(
                     ChartboostMediationAdException(
                         getChartboostMediationError(adError.code)
@@ -1053,7 +1114,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdShowedFullScreenContent() {
             PartnerLogController.log(SHOW_SUCCEEDED)
-            continuation.get()?.resume(Result.success(partnerAd))
+            resumeOnce(Result.success(partnerAd))
         }
 
         override fun onAdClicked() {
@@ -1078,8 +1139,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private fun createRewardedInterstitialFullScreenContentCallback(
         listener: PartnerAdListener?,
         partnerAd: PartnerAd,
-        continuation: WeakReference<Continuation<Result<PartnerAd>>>
+        weakContinuation: WeakReference<CancellableContinuation<Result<PartnerAd>>>
     ) = object : FullScreenContentCallback() {
+
+        fun resumeOnce(result: Result<PartnerAd>) {
+            val continuation = weakContinuation.get()
+            if (continuation?.isActive == true) {
+                continuation.resume(result)
+            }
+        }
+
         override fun onAdImpression() {
             PartnerLogController.log(DID_TRACK_IMPRESSION)
             listener?.onPartnerAdImpression(partnerAd)
@@ -1091,7 +1160,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdFailedToShowFullScreenContent(adError: AdError) {
             PartnerLogController.log(SHOW_FAILED, adError.message)
-            continuation.get()?.resume(
+            resumeOnce(
                 Result.failure(
                     ChartboostMediationAdException(
                         getChartboostMediationError(adError.code)
@@ -1102,7 +1171,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
         override fun onAdShowedFullScreenContent() {
             PartnerLogController.log(SHOW_SUCCEEDED)
-            continuation.get()?.resume(Result.success(partnerAd))
+            resumeOnce(Result.success(partnerAd))
         }
 
         override fun onAdClicked() {
