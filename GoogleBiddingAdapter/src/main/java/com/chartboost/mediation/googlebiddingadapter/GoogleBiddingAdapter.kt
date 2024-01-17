@@ -1,6 +1,6 @@
 /*
  * Copyright 2022-2023 Chartboost, Inc.
- * 
+ *
  * Use of this source code is governed by an MIT-style
  * license that can be found in the LICENSE file.
  */
@@ -50,15 +50,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 PartnerLogController.log(
                     CUSTOM,
                     "Google Bidding test device ID(s) to be set: ${
-                        if (value.isEmpty()) "none"
-                        else value.joinToString()
-                    }"
+                        if (value.isEmpty()) {
+                            "none"
+                        } else {
+                            value.joinToString()
+                        }
+                    }",
                 )
 
                 // There have been known ANRs when calling setRequestConfiguration() on the main thread.
                 CoroutineScope(IO).launch {
                     MobileAds.setRequestConfiguration(
-                        RequestConfiguration.Builder().setTestDeviceIds(value).build()
+                        RequestConfiguration.Builder().setTestDeviceIds(value).build(),
                     )
                 }
             }
@@ -127,7 +130,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun setUp(
         context: Context,
-        partnerConfiguration: PartnerConfiguration
+        partnerConfiguration: PartnerConfiguration,
     ): Result<Unit> {
         PartnerLogController.log(SETUP_STARTED)
 
@@ -162,14 +165,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override fun setGdpr(
         context: Context,
         applies: Boolean?,
-        gdprConsentStatus: GdprConsentStatus
+        gdprConsentStatus: GdprConsentStatus,
     ) {
         PartnerLogController.log(
             when (applies) {
                 true -> GDPR_APPLICABLE
                 false -> GDPR_NOT_APPLICABLE
                 else -> GDPR_UNKNOWN
-            }
+            },
         )
 
         PartnerLogController.log(
@@ -177,7 +180,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 GdprConsentStatus.GDPR_CONSENT_UNKNOWN -> GDPR_CONSENT_UNKNOWN
                 GdprConsentStatus.GDPR_CONSENT_GRANTED -> GDPR_CONSENT_GRANTED
                 GdprConsentStatus.GDPR_CONSENT_DENIED -> GDPR_CONSENT_DENIED
-            }
+            },
         )
 
         this.gdprApplies = applies
@@ -197,11 +200,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override fun setCcpaConsent(
         context: Context,
         hasGrantedCcpaConsent: Boolean,
-        privacyString: String
+        privacyString: String,
     ) {
         PartnerLogController.log(
-            if (hasGrantedCcpaConsent) CCPA_CONSENT_GRANTED
-            else CCPA_CONSENT_DENIED
+            if (hasGrantedCcpaConsent) {
+                CCPA_CONSENT_GRANTED
+            } else {
+                CCPA_CONSENT_DENIED
+            },
         )
 
         ccpaPrivacyString = privacyString
@@ -213,10 +219,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * @param context The current [Context].
      * @param isSubjectToCoppa True if the user is subject to COPPA, false otherwise.
      */
-    override fun setUserSubjectToCoppa(context: Context, isSubjectToCoppa: Boolean) {
+    override fun setUserSubjectToCoppa(
+        context: Context,
+        isSubjectToCoppa: Boolean,
+    ) {
         PartnerLogController.log(
-            if (isSubjectToCoppa) COPPA_SUBJECT
-            else COPPA_NOT_SUBJECT
+            if (isSubjectToCoppa) {
+                COPPA_SUBJECT
+            } else {
+                COPPA_NOT_SUBJECT
+            },
         )
 
         // There have been known ANRs when calling setRequestConfiguration() on the main thread.
@@ -228,8 +240,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_TRUE
                         } else {
                             RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_FALSE
-                        }
-                    ).build()
+                        },
+                    ).build(),
             )
         }
     }
@@ -244,7 +256,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     override suspend fun fetchBidderInformation(
         context: Context,
-        request: PreBidRequest
+        request: PreBidRequest,
     ): Map<String, String> {
         PartnerLogController.log(BIDDER_INFO_FETCH_STARTED)
 
@@ -252,10 +264,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
         val extras = Bundle()
         extras.putString("query_info_type", "requester_type_2")
 
-        val adRequest = AdRequest.Builder()
-            .setRequestAgent("Chartboost")
-            .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
-            .build()
+        val adRequest =
+            AdRequest.Builder()
+                .setRequestAgent("Chartboost")
+                .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
+                .build()
 
         val adFormat = getGoogleBiddingAdFormat(request.format)
 
@@ -281,7 +294,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             PartnerLogController.log(BIDDER_INFO_FETCH_FAILED, error)
                             resumeOnce(emptyMap())
                         }
-                    }
+                    },
                 )
             }
         }
@@ -299,32 +312,35 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override suspend fun load(
         context: Context,
         request: PartnerAdLoadRequest,
-        partnerAdListener: PartnerAdListener
+        partnerAdListener: PartnerAdListener,
     ): Result<PartnerAd> {
         PartnerLogController.log(LOAD_STARTED)
 
         return when (request.format.key) {
-            AdFormat.INTERSTITIAL.key -> loadInterstitialAd(
-                context,
-                request,
-                partnerAdListener
-            )
-            AdFormat.REWARDED.key -> loadRewardedAd(
-                context,
-                request,
-                partnerAdListener
-            )
-            AdFormat.BANNER.key, "adaptive_banner" -> loadBannerAd(
-                context,
-                request,
-                partnerAdListener
-            )
+            AdFormat.INTERSTITIAL.key ->
+                loadInterstitialAd(
+                    context,
+                    request,
+                    partnerAdListener,
+                )
+            AdFormat.REWARDED.key ->
+                loadRewardedAd(
+                    context,
+                    request,
+                    partnerAdListener,
+                )
+            AdFormat.BANNER.key, "adaptive_banner" ->
+                loadBannerAd(
+                    context,
+                    request,
+                    partnerAdListener,
+                )
             else -> {
                 if (request.format.key == "rewarded_interstitial") {
                     loadRewardedInterstitialAd(
                         context,
                         request,
-                        partnerAdListener
+                        partnerAdListener,
                     )
                 } else {
                     PartnerLogController.log(LOAD_FAILED)
@@ -342,7 +358,10 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
-    override suspend fun show(context: Context, partnerAd: PartnerAd): Result<PartnerAd> {
+    override suspend fun show(
+        context: Context,
+        partnerAd: PartnerAd,
+    ): Result<PartnerAd> {
         PartnerLogController.log(SHOW_STARTED)
         val listener = listeners.remove(partnerAd.request.identifier)
 
@@ -400,7 +419,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             } else {
                 PartnerLogController.log(
                     SETUP_FAILED,
-                    "Initialization state: ${it.initializationState}. Description: ${it.description}"
+                    "Initialization state: ${it.initializationState}. Description: ${it.description}",
                 )
                 Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_INITIALIZATION_FAILURE_UNKNOWN))
             }
@@ -420,7 +439,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun loadBannerAd(
         context: Context,
         request: PartnerAdLoadRequest,
-        listener: PartnerAdListener
+        listener: PartnerAdListener,
     ): Result<PartnerAd> {
         return suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<PartnerAd>) {
@@ -430,75 +449,79 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
 
             CoroutineScope(Main).launch {
-                val adm = request.adm ?: run {
-                    PartnerLogController.log(
-                        LOAD_FAILED,
-                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
-                    )
-                    continuation.resumeWith(
-                        Result.failure(
-                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
+                val adm =
+                    request.adm ?: run {
+                        PartnerLogController.log(
+                            LOAD_FAILED,
+                            ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause,
                         )
-                    )
-                    return@launch
-                }
+                        continuation.resumeWith(
+                            Result.failure(
+                                ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP),
+                            ),
+                        )
+                        return@launch
+                    }
 
                 val bannerAd = AdView(context)
                 val adSize = getGoogleBiddingAdSize(context, request.size, request.format.key == "adaptive_banner")
 
-                val details = if (request.format.key == "adaptive_banner") {
-                    mapOf(
-                        "banner_width_dips" to "${adSize.width}",
-                        "banner_height_dips" to "${adSize.height}"
-                    )
-                } else {
-                    emptyMap()
-                }
+                val details =
+                    if (request.format.key == "adaptive_banner") {
+                        mapOf(
+                            "banner_width_dips" to "${adSize.width}",
+                            "banner_height_dips" to "${adSize.height}",
+                        )
+                    } else {
+                        emptyMap()
+                    }
 
-                val partnerAd = PartnerAd(
-                    ad = bannerAd,
-                    details = details,
-                    request = request,
-                )
+                val partnerAd =
+                    PartnerAd(
+                        ad = bannerAd,
+                        details = details,
+                        request = request,
+                    )
 
                 bannerAd.setAdSize(adSize)
                 bannerAd.adUnitId = request.partnerPlacement
                 bannerAd.loadAd(buildRequest(adm))
-                bannerAd.adListener = object : AdListener() {
-                    override fun onAdImpression() {
-                        PartnerLogController.log(DID_TRACK_IMPRESSION)
-                        listener.onPartnerAdImpression(partnerAd)
-                    }
+                bannerAd.adListener =
+                    object : AdListener() {
+                        override fun onAdImpression() {
+                            PartnerLogController.log(DID_TRACK_IMPRESSION)
+                            listener.onPartnerAdImpression(partnerAd)
+                        }
 
-                    override fun onAdLoaded() {
-                        PartnerLogController.log(LOAD_SUCCEEDED)
-                        resumeOnce(Result.success(partnerAd))
-                    }
+                        override fun onAdLoaded() {
+                            PartnerLogController.log(LOAD_SUCCEEDED)
+                            resumeOnce(Result.success(partnerAd))
+                        }
 
-                    override fun onAdFailedToLoad(adError: LoadAdError) {
-                        PartnerLogController.log(LOAD_FAILED, adError.message)
-                        resumeOnce(
-                            Result.failure(
-                                ChartboostMediationAdException(
-                                    getChartboostMediationError(adError.code)
-                                )
+                        override fun onAdFailedToLoad(adError: LoadAdError) {
+                            PartnerLogController.log(LOAD_FAILED, adError.message)
+                            resumeOnce(
+                                Result.failure(
+                                    ChartboostMediationAdException(
+                                        getChartboostMediationError(adError.code),
+                                    ),
+                                ),
                             )
-                        )
-                    }
+                        }
 
-                    override fun onAdOpened() {
-                        // NO-OP
-                    }
+                        override fun onAdOpened() {
+                            // NO-OP
+                        }
 
-                    override fun onAdClicked() {
-                        PartnerLogController.log(DID_CLICK)
-                        listener.onPartnerAdClicked(partnerAd)
-                    }
+                        override fun onAdClicked() {
+                            PartnerLogController.log(DID_CLICK)
+                            listener.onPartnerAdClicked(partnerAd)
+                        }
 
-                    override fun onAdClosed() {
-                        // NO-OP. Ignore banner closes to help avoid auto-refresh issues.
+                        override fun onAdClosed() {
+                            // NO-OP. Ignore banner closes to help avoid auto-refresh issues.
+                        }
                     }
-                }
             }
         }
     }
@@ -512,13 +535,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The Google Bidding ad size that best matches the given [Size].
      */
-    private fun getGoogleBiddingAdSize(context: Context, size: Size?, isAdaptive: Boolean = false): AdSize {
+    private fun getGoogleBiddingAdSize(
+        context: Context,
+        size: Size?,
+        isAdaptive: Boolean = false,
+    ): AdSize {
         if (isAdaptive) {
             return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-                context, size?.width ?: AdSize.BANNER.width
+                context,
+                size?.width ?: AdSize.BANNER.width,
             )
         }
-        
+
         return size?.height?.let {
             when {
                 it in 50 until 90 -> AdSize.BANNER
@@ -541,7 +569,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun loadInterstitialAd(
         context: Context,
         request: PartnerAdLoadRequest,
-        listener: PartnerAdListener
+        listener: PartnerAdListener,
     ): Result<PartnerAd> {
         // Save the listener for later use.
         listeners[request.identifier] = listener
@@ -554,20 +582,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
 
             CoroutineScope(Main).launch {
-                val adm = request.adm ?: run {
-                    PartnerLogController.log(
-                        LOAD_FAILED,
-                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
-                    )
-                    continuation.resumeWith(
-                        Result.failure(
-                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
+                val adm =
+                    request.adm ?: run {
+                        PartnerLogController.log(
+                            LOAD_FAILED,
+                            ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause,
                         )
-                    )
-                    return@launch
-                }
+                        continuation.resumeWith(
+                            Result.failure(
+                                ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP),
+                            ),
+                        )
+                        return@launch
+                    }
 
-                InterstitialAd.load(context,
+                InterstitialAd.load(
+                    context,
                     request.partnerPlacement,
                     buildRequest(adm),
                     object : InterstitialAdLoadCallback() {
@@ -578,9 +608,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                     PartnerAd(
                                         ad = interstitialAd,
                                         details = emptyMap(),
-                                        request = request
-                                    )
-                                )
+                                        request = request,
+                                    ),
+                                ),
                             )
                         }
 
@@ -589,12 +619,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             resumeOnce(
                                 Result.failure(
                                     ChartboostMediationAdException(
-                                        getChartboostMediationError(loadAdError.code)
-                                    )
-                                )
+                                        getChartboostMediationError(loadAdError.code),
+                                    ),
+                                ),
                             )
                         }
-                    }
+                    },
                 )
             }
         }
@@ -612,7 +642,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun loadRewardedAd(
         context: Context,
         request: PartnerAdLoadRequest,
-        listener: PartnerAdListener
+        listener: PartnerAdListener,
     ): Result<PartnerAd> {
         // Save the listener for later use.
         listeners[request.identifier] = listener
@@ -625,20 +655,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
 
             CoroutineScope(Main).launch {
-                val adm = request.adm ?: run {
-                    PartnerLogController.log(
-                        LOAD_FAILED,
-                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
-                    )
-                    continuation.resumeWith(
-                        Result.failure(
-                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
+                val adm =
+                    request.adm ?: run {
+                        PartnerLogController.log(
+                            LOAD_FAILED,
+                            ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause,
                         )
-                    )
-                    return@launch
-                }
+                        continuation.resumeWith(
+                            Result.failure(
+                                ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP),
+                            ),
+                        )
+                        return@launch
+                    }
 
-                RewardedAd.load(context,
+                RewardedAd.load(
+                    context,
                     request.partnerPlacement,
                     buildRequest(adm),
                     object : RewardedAdLoadCallback() {
@@ -649,9 +681,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                     PartnerAd(
                                         ad = rewardedAd,
                                         details = emptyMap(),
-                                        request = request
-                                    )
-                                )
+                                        request = request,
+                                    ),
+                                ),
                             )
                         }
 
@@ -661,13 +693,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(
-                                            loadAdError.code
-                                        )
-                                    )
-                                )
+                                            loadAdError.code,
+                                        ),
+                                    ),
+                                ),
                             )
                         }
-                    }
+                    },
                 )
             }
         }
@@ -685,7 +717,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun loadRewardedInterstitialAd(
         context: Context,
         request: PartnerAdLoadRequest,
-        listener: PartnerAdListener
+        listener: PartnerAdListener,
     ): Result<PartnerAd> {
         // Save the listener for later use.
         listeners[request.identifier] = listener
@@ -698,20 +730,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
 
             CoroutineScope(Main).launch {
-                val adm = request.adm ?: run {
-                    PartnerLogController.log(
-                        LOAD_FAILED,
-                        ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause
-                    )
-                    continuation.resumeWith(
-                        Result.failure(
-                            ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP)
+                val adm =
+                    request.adm ?: run {
+                        PartnerLogController.log(
+                            LOAD_FAILED,
+                            ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP.cause,
                         )
-                    )
-                    return@launch
-                }
+                        continuation.resumeWith(
+                            Result.failure(
+                                ChartboostMediationAdException(ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP),
+                            ),
+                        )
+                        return@launch
+                    }
 
-                RewardedInterstitialAd.load(context,
+                RewardedInterstitialAd.load(
+                    context,
                     request.partnerPlacement,
                     buildRequest(adm),
                     object : RewardedInterstitialAdLoadCallback() {
@@ -722,9 +756,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                     PartnerAd(
                                         ad = rewardedInterstitialAd,
                                         details = emptyMap(),
-                                        request = request
-                                    )
-                                )
+                                        request = request,
+                                    ),
+                                ),
                             )
                         }
 
@@ -734,18 +768,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 Result.failure(
                                     ChartboostMediationAdException(
                                         getChartboostMediationError(
-                                            loadAdError.code
-                                        )
-                                    )
-                                )
+                                            loadAdError.code,
+                                        ),
+                                    ),
+                                ),
                             )
                         }
-                    }
+                    },
                 )
             }
         }
     }
-
 
     /**
      * Attempt to show a Google Bidding interstitial ad on the main thread.
@@ -759,7 +792,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun showInterstitialAd(
         context: Context,
         partnerAd: PartnerAd,
-        listener: PartnerAdListener?
+        listener: PartnerAdListener?,
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
@@ -783,7 +816,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdImpression(partnerAd)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
                                     )
                             }
 
@@ -792,9 +825,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 resumeOnce(
                                     Result.failure(
                                         ChartboostMediationAdException(
-                                            getChartboostMediationError(adError.code)
-                                        )
-                                    )
+                                            getChartboostMediationError(adError.code),
+                                        ),
+                                    ),
                                 )
                             }
 
@@ -808,7 +841,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdClicked(partnerAd)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
                                     )
                             }
 
@@ -817,7 +850,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdDismissed(partnerAd, null)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
                                     )
                             }
                         }
@@ -828,9 +861,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 resumeOnce(
                     Result.failure(
                         ChartboostMediationAdException(
-                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
-                        )
-                    )
+                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND,
+                        ),
+                    ),
                 )
             }
         }
@@ -848,7 +881,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun showRewardedAd(
         context: Context,
         partnerAd: PartnerAd,
-        listener: PartnerAdListener?
+        listener: PartnerAdListener?,
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
@@ -865,56 +898,57 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedAd = ad as RewardedAd
-                    rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdImpression() {
-                            PartnerLogController.log(DID_TRACK_IMPRESSION)
-                            listener?.onPartnerAdImpression(partnerAd) ?: PartnerLogController.log(
-                                CUSTOM,
-                                "Unable to fire onPartnerAdImpression for Google Bidding adapter."
-                            )
-                        }
+                    rewardedAd.fullScreenContentCallback =
+                        object : FullScreenContentCallback() {
+                            override fun onAdImpression() {
+                                PartnerLogController.log(DID_TRACK_IMPRESSION)
+                                listener?.onPartnerAdImpression(partnerAd) ?: PartnerLogController.log(
+                                    CUSTOM,
+                                    "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+                                )
+                            }
 
-                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                            PartnerLogController.log(SHOW_FAILED, adError.message)
-                            resumeOnce(
-                                Result.failure(
-                                    ChartboostMediationAdException(
-                                        getChartboostMediationError(adError.code)
+                            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                PartnerLogController.log(SHOW_FAILED, adError.message)
+                                resumeOnce(
+                                    Result.failure(
+                                        ChartboostMediationAdException(
+                                            getChartboostMediationError(adError.code),
+                                        ),
+                                    ),
+                                )
+                            }
+
+                            override fun onAdShowedFullScreenContent() {
+                                PartnerLogController.log(SHOW_SUCCEEDED)
+                                resumeOnce(Result.success(partnerAd))
+                            }
+
+                            override fun onAdClicked() {
+                                PartnerLogController.log(DID_CLICK)
+                                listener?.onPartnerAdClicked(partnerAd)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
                                     )
-                                )
-                            )
-                        }
+                            }
 
-                        override fun onAdShowedFullScreenContent() {
-                            PartnerLogController.log(SHOW_SUCCEEDED)
-                            resumeOnce(Result.success(partnerAd))
+                            override fun onAdDismissedFullScreenContent() {
+                                PartnerLogController.log(DID_DISMISS)
+                                listener?.onPartnerAdDismissed(partnerAd, null)
+                                    ?: PartnerLogController.log(
+                                        CUSTOM,
+                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+                                    )
+                            }
                         }
-
-                        override fun onAdClicked() {
-                            PartnerLogController.log(DID_CLICK)
-                            listener?.onPartnerAdClicked(partnerAd)
-                                ?: PartnerLogController.log(
-                                    CUSTOM,
-                                    "Unable to fire onPartnerAdClicked for Google Bidding adapter."
-                                )
-                        }
-
-                        override fun onAdDismissedFullScreenContent() {
-                            PartnerLogController.log(DID_DISMISS)
-                            listener?.onPartnerAdDismissed(partnerAd, null)
-                                ?: PartnerLogController.log(
-                                    CUSTOM,
-                                    "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
-                                )
-                        }
-                    }
 
                     rewardedAd.show(context) {
                         PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
                                 CUSTOM,
-                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
+                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter.",
                             )
                     }
                 }
@@ -923,9 +957,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 resumeOnce(
                     Result.failure(
                         ChartboostMediationAdException(
-                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND
-                        )
-                    )
+                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND,
+                        ),
+                    ),
                 )
             }
         }
@@ -943,7 +977,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private suspend fun showRewardedInterstitialAd(
         context: Context,
         partnerAd: PartnerAd,
-        listener: PartnerAdListener?
+        listener: PartnerAdListener?,
     ): Result<PartnerAd> {
         if (context !is Activity) {
             PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
@@ -967,7 +1001,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdImpression(partnerAd)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
                                     )
                             }
 
@@ -976,9 +1010,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 resumeOnce(
                                     Result.failure(
                                         ChartboostMediationAdException(
-                                            getChartboostMediationError(adError.code)
-                                        )
-                                    )
+                                            getChartboostMediationError(adError.code),
+                                        ),
+                                    ),
                                 )
                             }
 
@@ -992,7 +1026,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdClicked(partnerAd)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
                                     )
                             }
 
@@ -1001,7 +1035,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                 listener?.onPartnerAdDismissed(partnerAd, null)
                                     ?: PartnerLogController.log(
                                         CUSTOM,
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter."
+                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
                                     )
                             }
                         }
@@ -1011,14 +1045,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
                                 CUSTOM,
-                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter."
+                                "Unable to fire onPartnerAdRewarded for Google Bidding adapter.",
                             )
                     }
                 }
             }
         }
     }
-
 
     /**
      * Destroy the current Google Bidding banner ad.
@@ -1052,12 +1085,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The equivalent Google Bidding ad format.
      */
-    private fun getGoogleBiddingAdFormat(format: AdFormat) = when (format.key) {
-        AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER
-        AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
-        AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED
-        else -> com.google.android.gms.ads.AdFormat.BANNER
-    }
+    private fun getGoogleBiddingAdFormat(format: AdFormat) =
+        when (format.key) {
+            AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER
+            AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
+            AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED
+            else -> com.google.android.gms.ads.AdFormat.BANNER
+        }
 
     /**
      * Build a Google Bidding ad request.
@@ -1097,13 +1131,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return The corresponding [ChartboostMediationError].
      */
-    private fun getChartboostMediationError(error: Int) = when (error) {
-        AdRequest.ERROR_CODE_APP_ID_MISSING -> ChartboostMediationError.CM_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
-        AdRequest.ERROR_CODE_INTERNAL_ERROR -> ChartboostMediationError.CM_INTERNAL_ERROR
-        AdRequest.ERROR_CODE_INVALID_AD_STRING -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP
-        AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_REQUEST
-        AdRequest.ERROR_CODE_NETWORK_ERROR -> ChartboostMediationError.CM_NO_CONNECTIVITY
-        AdRequest.ERROR_CODE_NO_FILL -> ChartboostMediationError.CM_LOAD_FAILURE_NO_FILL
-        else -> ChartboostMediationError.CM_PARTNER_ERROR
-    }
+    private fun getChartboostMediationError(error: Int) =
+        when (error) {
+            AdRequest.ERROR_CODE_APP_ID_MISSING -> ChartboostMediationError.CM_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
+            AdRequest.ERROR_CODE_INTERNAL_ERROR -> ChartboostMediationError.CM_INTERNAL_ERROR
+            AdRequest.ERROR_CODE_INVALID_AD_STRING -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP
+            AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_REQUEST
+            AdRequest.ERROR_CODE_NETWORK_ERROR -> ChartboostMediationError.CM_NO_CONNECTIVITY
+            AdRequest.ERROR_CODE_NO_FILL -> ChartboostMediationError.CM_LOAD_FAILURE_NO_FILL
+            else -> ChartboostMediationError.CM_PARTNER_ERROR
+        }
 }
