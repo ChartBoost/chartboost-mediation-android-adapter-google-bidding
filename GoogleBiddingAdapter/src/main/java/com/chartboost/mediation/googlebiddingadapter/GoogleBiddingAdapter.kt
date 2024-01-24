@@ -1049,26 +1049,27 @@ class GoogleBiddingAdapter : PartnerAdapter {
  * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
  */
 private class InterstitialAdShowCallback(
-    listenerRef: WeakReference<PartnerAdListener?>,
-    partnerAdRef: WeakReference<PartnerAd>,
-    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+    private val listenerRef: WeakReference<PartnerAdListener?>,
+    private val partnerAdRef: WeakReference<PartnerAd>,
+    private val continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
 ) : FullScreenContentCallback() {
-    private val listenerWeakRef = listenerRef
-    private val partnerAdWeakRef = partnerAdRef
-    private val continuationWeakRef = continuationRef
-
     override fun onAdImpression() {
         PartnerLogController.log(DID_TRACK_IMPRESSION)
-        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdImpression(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdImpression for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdFailedToShowFullScreenContent(adError: AdError) {
         PartnerLogController.log(SHOW_FAILED, adError.message)
-        continuationWeakRef.get()?.let {
+        continuationRef.get()?.let {
             if (it.isActive) {
                 it.resume(
                     Result.failure(
@@ -1078,36 +1079,56 @@ private class InterstitialAdShowCallback(
                     ),
                 )
             }
-        }
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdFailedToShowFullScreenContent(). Continuation is null.",
+        )
     }
 
     override fun onAdShowedFullScreenContent() {
         PartnerLogController.log(SHOW_SUCCEEDED)
 
-        continuationWeakRef.get()?.let {
-            if (it.isActive) {
-                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
-            }
-        }
+        partnerAdRef.get()?.let {
+            continuationRef.get()?.let { continuation ->
+                if (continuation.isActive) {
+                    continuation.resume(Result.success(it))
+                }
+            } ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to resume continuation in onAdShowedFullScreenContent(). Continuation is null.",
+            )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdShowedFullScreenContent(). PartnerAd is null.",
+        )
     }
 
     override fun onAdClicked() {
         PartnerLogController.log(DID_CLICK)
 
-        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdClicked(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdClicked for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdDismissedFullScreenContent() {
         PartnerLogController.log(DID_DISMISS)
-        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdDismissed(it, null) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdDismissed for Google Bidding adapter. PartnerAd is null",
+        )
     }
 }
 
@@ -1119,26 +1140,27 @@ private class InterstitialAdShowCallback(
  * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
  */
 private class RewardedAdShowCallback(
-    listenerRef: WeakReference<PartnerAdListener?>,
-    partnerAdRef: WeakReference<PartnerAd>,
-    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+    private val listenerRef: WeakReference<PartnerAdListener?>,
+    private val partnerAdRef: WeakReference<PartnerAd>,
+    private val continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
 ) : FullScreenContentCallback() {
-    private val listenerWeakRef = listenerRef
-    private val partnerAdWeakRef = partnerAdRef
-    private val continuationWeakRef = continuationRef
-
     override fun onAdImpression() {
         PartnerLogController.log(DID_TRACK_IMPRESSION)
-        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdImpression(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdImpression for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdFailedToShowFullScreenContent(adError: AdError) {
         PartnerLogController.log(SHOW_FAILED, adError.message)
-        continuationWeakRef.get()?.let {
+        continuationRef.get()?.let {
             if (it.isActive) {
                 it.resume(
                     Result.failure(
@@ -1148,36 +1170,56 @@ private class RewardedAdShowCallback(
                     ),
                 )
             }
-        }
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdFailedToShowFullScreenContent(). Continuation is null.",
+        )
     }
 
     override fun onAdShowedFullScreenContent() {
         PartnerLogController.log(SHOW_SUCCEEDED)
 
-        continuationWeakRef.get()?.let {
-            if (it.isActive) {
-                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
-            }
-        }
+        partnerAdRef.get()?.let {
+            continuationRef.get()?.let { continuation ->
+                if (continuation.isActive) {
+                    continuation.resume(Result.success(it))
+                }
+            } ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to resume continuation in onAdShowedFullScreenContent(). Continuation is null.",
+            )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdShowedFullScreenContent(). PartnerAd is null.",
+        )
     }
 
     override fun onAdClicked() {
         PartnerLogController.log(DID_CLICK)
 
-        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdClicked(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdClicked for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdDismissedFullScreenContent() {
         PartnerLogController.log(DID_DISMISS)
-        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdDismissed(it, null) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdDismissed for Google Bidding adapter. PartnerAd is null",
+        )
     }
 }
 
@@ -1189,26 +1231,27 @@ private class RewardedAdShowCallback(
  * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
  */
 private class RewardedInterstitialAdShowCallback(
-    listenerRef: WeakReference<PartnerAdListener?>,
-    partnerAdRef: WeakReference<PartnerAd>,
-    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+    private val listenerRef: WeakReference<PartnerAdListener?>,
+    private val partnerAdRef: WeakReference<PartnerAd>,
+    private val continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
 ) : FullScreenContentCallback() {
-    private val listenerWeakRef = listenerRef
-    private val partnerAdWeakRef = partnerAdRef
-    private val continuationWeakRef = continuationRef
-
     override fun onAdImpression() {
         PartnerLogController.log(DID_TRACK_IMPRESSION)
-        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdImpression(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdImpression for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdFailedToShowFullScreenContent(adError: AdError) {
         PartnerLogController.log(SHOW_FAILED, adError.message)
-        continuationWeakRef.get()?.let {
+        continuationRef.get()?.let {
             if (it.isActive) {
                 it.resume(
                     Result.failure(
@@ -1218,35 +1261,55 @@ private class RewardedInterstitialAdShowCallback(
                     ),
                 )
             }
-        }
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdFailedToShowFullScreenContent(). Continuation is null.",
+        )
     }
 
     override fun onAdShowedFullScreenContent() {
         PartnerLogController.log(SHOW_SUCCEEDED)
 
-        continuationWeakRef.get()?.let {
-            if (it.isActive) {
-                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
-            }
-        }
+        partnerAdRef.get()?.let {
+            continuationRef.get()?.let { continuation ->
+                if (continuation.isActive) {
+                    continuation.resume(Result.success(it))
+                }
+            } ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to resume continuation in onAdShowedFullScreenContent(). Continuation is null.",
+            )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to resume continuation in onAdShowedFullScreenContent(). PartnerAd is null.",
+        )
     }
 
     override fun onAdClicked() {
         PartnerLogController.log(DID_CLICK)
 
-        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
-            ?: PartnerLogController.log(
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdClicked(it) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdClicked for Google Bidding adapter. PartnerAd is null",
+        )
     }
 
     override fun onAdDismissedFullScreenContent() {
         PartnerLogController.log(DID_DISMISS)
-        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
-            ?: PartnerLogController.log(
+
+        partnerAdRef.get()?.let {
+            listenerRef.get()?.onPartnerAdDismissed(it, null) ?: PartnerLogController.log(
                 CUSTOM,
-                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter. Listener is null",
             )
+        } ?: PartnerLogController.log(
+            CUSTOM,
+            "Unable to fire onPartnerAdDismissed for Google Bidding adapter. PartnerAd is null",
+        )
     }
 }
