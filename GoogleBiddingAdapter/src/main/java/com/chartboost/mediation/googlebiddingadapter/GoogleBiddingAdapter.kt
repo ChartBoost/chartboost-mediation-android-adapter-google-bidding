@@ -28,6 +28,7 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
@@ -35,6 +36,7 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.lang.ref.WeakReference
 import kotlin.coroutines.resume
 
 class GoogleBiddingAdapter : PartnerAdapter {
@@ -64,6 +66,24 @@ class GoogleBiddingAdapter : PartnerAdapter {
                         RequestConfiguration.Builder().setTestDeviceIds(value).build(),
                     )
                 }
+            }
+
+        /**
+         * Convert a given Google Bidding error code into a [ChartboostMediationError].
+         *
+         * @param error The Google Bidding error code as an [Int].
+         *
+         * @return The corresponding [ChartboostMediationError].
+         */
+        internal fun getChartboostMediationError(error: Int) =
+            when (error) {
+                AdRequest.ERROR_CODE_APP_ID_MISSING -> ChartboostMediationError.CM_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
+                AdRequest.ERROR_CODE_INTERNAL_ERROR -> ChartboostMediationError.CM_INTERNAL_ERROR
+                AdRequest.ERROR_CODE_INVALID_AD_STRING -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP
+                AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_REQUEST
+                AdRequest.ERROR_CODE_NETWORK_ERROR -> ChartboostMediationError.CM_NO_CONNECTIVITY
+                AdRequest.ERROR_CODE_NO_FILL -> ChartboostMediationError.CM_LOAD_FAILURE_NO_FILL
+                else -> ChartboostMediationError.CM_PARTNER_ERROR
             }
     }
 
@@ -809,51 +829,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val interstitialAd = ad as InterstitialAd
+
                     interstitialAd.fullScreenContentCallback =
-                        object : FullScreenContentCallback() {
-                            override fun onAdImpression() {
-                                PartnerLogController.log(DID_TRACK_IMPRESSION)
-                                listener?.onPartnerAdImpression(partnerAd)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
-                                    )
-                            }
-
-                            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                PartnerLogController.log(SHOW_FAILED, adError.message)
-                                resumeOnce(
-                                    Result.failure(
-                                        ChartboostMediationAdException(
-                                            getChartboostMediationError(adError.code),
-                                        ),
-                                    ),
-                                )
-                            }
-
-                            override fun onAdShowedFullScreenContent() {
-                                PartnerLogController.log(SHOW_SUCCEEDED)
-                                resumeOnce(Result.success(partnerAd))
-                            }
-
-                            override fun onAdClicked() {
-                                PartnerLogController.log(DID_CLICK)
-                                listener?.onPartnerAdClicked(partnerAd)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
-                                    )
-                            }
-
-                            override fun onAdDismissedFullScreenContent() {
-                                PartnerLogController.log(DID_DISMISS)
-                                listener?.onPartnerAdDismissed(partnerAd, null)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
-                                    )
-                            }
-                        }
+                        InterstitialAdShowCallback(
+                            WeakReference(listener),
+                            WeakReference(partnerAd),
+                            WeakReference(continuation),
+                        )
                     interstitialAd.show(context)
                 }
             } ?: run {
@@ -898,50 +880,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedAd = ad as RewardedAd
+
                     rewardedAd.fullScreenContentCallback =
-                        object : FullScreenContentCallback() {
-                            override fun onAdImpression() {
-                                PartnerLogController.log(DID_TRACK_IMPRESSION)
-                                listener?.onPartnerAdImpression(partnerAd) ?: PartnerLogController.log(
-                                    CUSTOM,
-                                    "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
-                                )
-                            }
-
-                            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                PartnerLogController.log(SHOW_FAILED, adError.message)
-                                resumeOnce(
-                                    Result.failure(
-                                        ChartboostMediationAdException(
-                                            getChartboostMediationError(adError.code),
-                                        ),
-                                    ),
-                                )
-                            }
-
-                            override fun onAdShowedFullScreenContent() {
-                                PartnerLogController.log(SHOW_SUCCEEDED)
-                                resumeOnce(Result.success(partnerAd))
-                            }
-
-                            override fun onAdClicked() {
-                                PartnerLogController.log(DID_CLICK)
-                                listener?.onPartnerAdClicked(partnerAd)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
-                                    )
-                            }
-
-                            override fun onAdDismissedFullScreenContent() {
-                                PartnerLogController.log(DID_DISMISS)
-                                listener?.onPartnerAdDismissed(partnerAd, null)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
-                                    )
-                            }
-                        }
+                        RewardedAdShowCallback(
+                            WeakReference(listener),
+                            WeakReference(partnerAd),
+                            WeakReference(continuation),
+                        )
 
                     rewardedAd.show(context) {
                         PartnerLogController.log(DID_REWARD)
@@ -994,51 +939,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
             partnerAd.ad?.let { ad ->
                 CoroutineScope(Main).launch {
                     val rewardedInterstitialAd = ad as RewardedInterstitialAd
+
                     rewardedInterstitialAd.fullScreenContentCallback =
-                        object : FullScreenContentCallback() {
-                            override fun onAdImpression() {
-                                PartnerLogController.log(DID_TRACK_IMPRESSION)
-                                listener?.onPartnerAdImpression(partnerAd)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
-                                    )
-                            }
-
-                            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                PartnerLogController.log(SHOW_FAILED, adError.message)
-                                resumeOnce(
-                                    Result.failure(
-                                        ChartboostMediationAdException(
-                                            getChartboostMediationError(adError.code),
-                                        ),
-                                    ),
-                                )
-                            }
-
-                            override fun onAdShowedFullScreenContent() {
-                                PartnerLogController.log(SHOW_SUCCEEDED)
-                                resumeOnce(Result.success(partnerAd))
-                            }
-
-                            override fun onAdClicked() {
-                                PartnerLogController.log(DID_CLICK)
-                                listener?.onPartnerAdClicked(partnerAd)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
-                                    )
-                            }
-
-                            override fun onAdDismissedFullScreenContent() {
-                                PartnerLogController.log(DID_DISMISS)
-                                listener?.onPartnerAdDismissed(partnerAd, null)
-                                    ?: PartnerLogController.log(
-                                        CUSTOM,
-                                        "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
-                                    )
-                            }
-                        }
+                        RewardedInterstitialAdShowCallback(
+                            WeakReference(listener),
+                            WeakReference(partnerAd),
+                            WeakReference(continuation),
+                        )
 
                     rewardedInterstitialAd.show(context) {
                         PartnerLogController.log(DID_REWARD)
@@ -1049,6 +956,15 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             )
                     }
                 }
+            } ?: run {
+                PartnerLogController.log(SHOW_FAILED, "Ad is null.")
+                resumeOnce(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            ChartboostMediationError.CM_SHOW_FAILURE_AD_NOT_FOUND,
+                        ),
+                    ),
+                )
             }
         }
     }
@@ -1123,22 +1039,214 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
         }
     }
+}
 
-    /**
-     * Convert a given Google Bidding error code into a [ChartboostMediationError].
-     *
-     * @param error The Google Bidding error code as an [Int].
-     *
-     * @return The corresponding [ChartboostMediationError].
-     */
-    private fun getChartboostMediationError(error: Int) =
-        when (error) {
-            AdRequest.ERROR_CODE_APP_ID_MISSING -> ChartboostMediationError.CM_LOAD_FAILURE_PARTNER_NOT_INITIALIZED
-            AdRequest.ERROR_CODE_INTERNAL_ERROR -> ChartboostMediationError.CM_INTERNAL_ERROR
-            AdRequest.ERROR_CODE_INVALID_AD_STRING -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_MARKUP
-            AdRequest.ERROR_CODE_INVALID_REQUEST, AdRequest.ERROR_CODE_REQUEST_ID_MISMATCH -> ChartboostMediationError.CM_LOAD_FAILURE_INVALID_AD_REQUEST
-            AdRequest.ERROR_CODE_NETWORK_ERROR -> ChartboostMediationError.CM_NO_CONNECTIVITY
-            AdRequest.ERROR_CODE_NO_FILL -> ChartboostMediationError.CM_LOAD_FAILURE_NO_FILL
-            else -> ChartboostMediationError.CM_PARTNER_ERROR
+/**
+ * Callback class for interstitial ads.
+ *
+ * @param listenerRef A [WeakReference] to the [PartnerAdListener] to be notified of ad events.
+ * @param partnerAdRef A [WeakReference] to the [PartnerAd] object containing the Google Bidding ad to be shown.
+ * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
+ */
+private class InterstitialAdShowCallback(
+    listenerRef: WeakReference<PartnerAdListener?>,
+    partnerAdRef: WeakReference<PartnerAd>,
+    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+) : FullScreenContentCallback() {
+    private val listenerWeakRef = listenerRef
+    private val partnerAdWeakRef = partnerAdRef
+    private val continuationWeakRef = continuationRef
+
+    override fun onAdImpression() {
+        PartnerLogController.log(DID_TRACK_IMPRESSION)
+        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+        PartnerLogController.log(SHOW_FAILED, adError.message)
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            GoogleBiddingAdapter.getChartboostMediationError(adError.code),
+                        ),
+                    ),
+                )
+            }
         }
+    }
+
+    override fun onAdShowedFullScreenContent() {
+        PartnerLogController.log(SHOW_SUCCEEDED)
+
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
+            }
+        }
+    }
+
+    override fun onAdClicked() {
+        PartnerLogController.log(DID_CLICK)
+
+        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdDismissedFullScreenContent() {
+        PartnerLogController.log(DID_DISMISS)
+        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+            )
+    }
+}
+
+/**
+ * Callback class for rewarded ads.
+ *
+ * @param listenerRef A [WeakReference] to the [PartnerAdListener] to be notified of ad events.
+ * @param partnerAdRef A [WeakReference] to the [PartnerAd] object containing the Google Bidding ad to be shown.
+ * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
+ */
+private class RewardedAdShowCallback(
+    listenerRef: WeakReference<PartnerAdListener?>,
+    partnerAdRef: WeakReference<PartnerAd>,
+    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+) : FullScreenContentCallback() {
+    private val listenerWeakRef = listenerRef
+    private val partnerAdWeakRef = partnerAdRef
+    private val continuationWeakRef = continuationRef
+
+    override fun onAdImpression() {
+        PartnerLogController.log(DID_TRACK_IMPRESSION)
+        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+        PartnerLogController.log(SHOW_FAILED, adError.message)
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            GoogleBiddingAdapter.getChartboostMediationError(adError.code),
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun onAdShowedFullScreenContent() {
+        PartnerLogController.log(SHOW_SUCCEEDED)
+
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
+            }
+        }
+    }
+
+    override fun onAdClicked() {
+        PartnerLogController.log(DID_CLICK)
+
+        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdDismissedFullScreenContent() {
+        PartnerLogController.log(DID_DISMISS)
+        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+            )
+    }
+}
+
+/**
+ * Callback class for rewarded interstitial ads.
+ *
+ * @param listenerRef A [WeakReference] to the [PartnerAdListener] to be notified of ad events.
+ * @param partnerAdRef A [WeakReference] to the [PartnerAd] object containing the Google Bidding ad to be shown.
+ * @param continuationRef A [WeakReference] to the [CancellableContinuation] to be resumed once the ad is shown.
+ */
+private class RewardedInterstitialAdShowCallback(
+    listenerRef: WeakReference<PartnerAdListener?>,
+    partnerAdRef: WeakReference<PartnerAd>,
+    continuationRef: WeakReference<CancellableContinuation<Result<PartnerAd>>>,
+) : FullScreenContentCallback() {
+    private val listenerWeakRef = listenerRef
+    private val partnerAdWeakRef = partnerAdRef
+    private val continuationWeakRef = continuationRef
+
+    override fun onAdImpression() {
+        PartnerLogController.log(DID_TRACK_IMPRESSION)
+        listenerWeakRef.get()?.onPartnerAdImpression(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdImpression for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+        PartnerLogController.log(SHOW_FAILED, adError.message)
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(
+                    Result.failure(
+                        ChartboostMediationAdException(
+                            GoogleBiddingAdapter.getChartboostMediationError(adError.code),
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun onAdShowedFullScreenContent() {
+        PartnerLogController.log(SHOW_SUCCEEDED)
+
+        continuationWeakRef.get()?.let {
+            if (it.isActive) {
+                it.resume(Result.success(partnerAdWeakRef.get() ?: return))
+            }
+        }
+    }
+
+    override fun onAdClicked() {
+        PartnerLogController.log(DID_CLICK)
+
+        listenerWeakRef.get()?.onPartnerAdClicked(partnerAdWeakRef.get() ?: return)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdClicked for Google Bidding adapter.",
+            )
+    }
+
+    override fun onAdDismissedFullScreenContent() {
+        PartnerLogController.log(DID_DISMISS)
+        listenerWeakRef.get()?.onPartnerAdDismissed(partnerAdWeakRef.get() ?: return, null)
+            ?: PartnerLogController.log(
+                CUSTOM,
+                "Unable to fire onPartnerAdDismissed for Google Bidding adapter.",
+            )
+    }
 }
