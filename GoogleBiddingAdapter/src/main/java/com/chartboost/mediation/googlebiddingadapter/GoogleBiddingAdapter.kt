@@ -1,6 +1,6 @@
 /*
  * Copyright 2023-2024 Chartboost, Inc.
- * 
+ *
  * Use of this source code is governed by an MIT-style
  * license that can be found in the LICENSE file.
  */
@@ -13,10 +13,10 @@ import android.os.Bundle
 import android.text.TextUtils
 import android.util.Size
 import android.view.View.GONE
-import com.chartboost.heliumsdk.domain.*
-import com.chartboost.heliumsdk.domain.AdFormat
-import com.chartboost.heliumsdk.utils.PartnerLogController
-import com.chartboost.heliumsdk.utils.PartnerLogController.PartnerAdapterEvents.*
+import com.chartboost.chartboostmediationsdk.domain.*
+import com.chartboost.chartboostmediationsdk.domain.AdFormat
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.*
 import com.chartboost.mediation.googlebiddingadapter.GoogleBiddingAdapter.Companion.getChartboostMediationError
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.*
