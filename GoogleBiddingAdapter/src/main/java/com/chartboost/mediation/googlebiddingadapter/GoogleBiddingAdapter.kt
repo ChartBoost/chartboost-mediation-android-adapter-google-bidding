@@ -374,13 +374,13 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Attempt to show the currently loaded Google Bidding ad.
      *
-     * @param context The current [Context]
+     * @param activity The current [Activity]
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     override suspend fun show(
-        context: Context,
+        activity: Activity,
         partnerAd: PartnerAd,
     ): Result<PartnerAd> {
         PartnerLogController.log(SHOW_STARTED)
@@ -392,11 +392,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
-            AdFormat.INTERSTITIAL.key -> showInterstitialAd(context, partnerAd, listener)
-            AdFormat.REWARDED.key -> showRewardedAd(context, partnerAd, listener)
+            AdFormat.INTERSTITIAL.key -> showInterstitialAd(activity, partnerAd, listener)
+            AdFormat.REWARDED.key -> showRewardedAd(activity, partnerAd, listener)
             else -> {
                 if (partnerAd.request.format.key == "rewarded_interstitial") {
-                    showRewardedInterstitialAd(context, partnerAd, listener)
+                    showRewardedInterstitialAd(activity, partnerAd, listener)
                 } else {
                     PartnerLogController.log(SHOW_FAILED)
                     Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_UNSUPPORTED_AD_FORMAT))
@@ -804,22 +804,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Attempt to show a Google Bidding interstitial ad on the main thread.
      *
-     * @param context The current [Context].
+     * @param activity The current [Activity].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      * @param listener The [PartnerAdListener] to be notified of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     private suspend fun showInterstitialAd(
-        context: Context,
+        activity: Activity,
         partnerAd: PartnerAd,
         listener: PartnerAdListener?,
     ): Result<PartnerAd> {
-        if (context !is Activity) {
-            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
-        }
-
         return suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<PartnerAd>) {
                 if (continuation.isActive) {
@@ -837,7 +832,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             partnerAd,
                             WeakReference(continuation),
                         )
-                    interstitialAd.show(context)
+                    interstitialAd.show(activity)
                 }
             } ?: run {
                 PartnerLogController.log(SHOW_FAILED, "Ad is null.")
@@ -855,22 +850,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Attempt to show a Google Bidding rewarded ad on the main thread.
      *
-     * @param context The current [Context].
+     * @param activity The current [Activity].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     private suspend fun showRewardedAd(
-        context: Context,
+        activity: Activity,
         partnerAd: PartnerAd,
         listener: PartnerAdListener?,
     ): Result<PartnerAd> {
-        if (context !is Activity) {
-            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
-        }
-
         return suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<PartnerAd>) {
                 if (continuation.isActive) {
@@ -889,7 +879,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             WeakReference(continuation),
                         )
 
-                    rewardedAd.show(context) {
+                    rewardedAd.show(activity) {
                         PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
@@ -914,22 +904,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Attempt to show a Google Bidding rewarded interstitial ad on the main thread.
      *
-     * @param context The current [Context].
+     * @param activity The current [Activity].
      * @param partnerAd The [PartnerAd] object containing the Google Bidding ad to be shown.
      * @param listener A [PartnerAdListener] to notify Chartboost Mediation of ad events.
      *
      * @return Result.success(PartnerAd) if the ad was successfully shown, Result.failure(Exception) otherwise.
      */
     private suspend fun showRewardedInterstitialAd(
-        context: Context,
+        activity: Activity,
         partnerAd: PartnerAd,
         listener: PartnerAdListener?,
     ): Result<PartnerAd> {
-        if (context !is Activity) {
-            PartnerLogController.log(SHOW_FAILED, "Context is not an Activity.")
-            return Result.failure(ChartboostMediationAdException(ChartboostMediationError.CM_SHOW_FAILURE_ACTIVITY_NOT_FOUND))
-        }
-
         return suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<PartnerAd>) {
                 if (continuation.isActive) {
@@ -948,7 +933,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
                             WeakReference(continuation),
                         )
 
-                    rewardedInterstitialAd.show(context) {
+                    rewardedInterstitialAd.show(activity) {
                         PartnerLogController.log(DID_REWARD)
                         listener?.onPartnerAdRewarded(partnerAd)
                             ?: PartnerLogController.log(
