@@ -47,20 +47,20 @@ object GoogleBiddingAdapterConfiguration : PartnerAdapterConfiguration {
         set(value) {
             field = value
             PartnerLogController.log(
-                    PartnerLogController.PartnerAdapterEvents.CUSTOM,
-                    "Google Bidding test device ID(s) to be set: ${
-                        if (value.isEmpty()) {
-                            "none"
-                        } else {
-                            value.joinToString()
-                        }
-                    }",
+                PartnerLogController.PartnerAdapterEvents.CUSTOM,
+                "Google Bidding test device ID(s) to be set: ${
+                    if (value.isEmpty()) {
+                        "none"
+                    } else {
+                        value.joinToString()
+                    }
+                }",
             )
 
             // There have been known ANRs when calling setRequestConfiguration() on the main thread.
             CoroutineScope(Dispatchers.IO).launch {
                 MobileAds.setRequestConfiguration(
-                        RequestConfiguration.Builder().setTestDeviceIds(value).build(),
+                    RequestConfiguration.Builder().setTestDeviceIds(value).build(),
                 )
             }
         }
