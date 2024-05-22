@@ -14,9 +14,31 @@ import android.text.TextUtils
 import android.util.Size
 import android.view.View.GONE
 import com.chartboost.chartboostmediationsdk.domain.*
-import com.chartboost.chartboostmediationsdk.domain.AdFormat
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController
-import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.*
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_FAILED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_STARTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_SUCCEEDED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.CUSTOM
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_CLICK
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_DISMISS
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_REWARD
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_TRACK_IMPRESSION
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_FAILED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_STARTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_SUCCEEDED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_FAILED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_STARTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.LOAD_SUCCEEDED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_FAILED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_STARTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SETUP_SUCCEEDED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_FAILED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_STARTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_SUCCEEDED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USER_IS_NOT_UNDERAGE
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USER_IS_UNDERAGE
+import com.chartboost.core.consent.ConsentKey
+import com.chartboost.core.consent.ConsentValue
 import com.chartboost.mediation.googlebiddingadapter.GoogleBiddingAdapter.Companion.getChartboostMediationError
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.*
@@ -29,14 +51,9 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import kotlin.coroutines.resume
 
@@ -95,7 +112,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override suspend fun setUp(
         context: Context,
         partnerConfiguration: PartnerConfiguration,
-    ): Result<Unit> = withContext(IO) {
+    ): Result<Map<String, Any>> = withContext(IO) {
         PartnerLogController.log(SETUP_STARTED)
 
         // Since Chartboost Mediation is the mediator, no need to initialize AdMob's partner SDKs.
@@ -105,7 +122,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         MobileAds.disableMediationAdapterInitialization(context)
 
         return@withContext suspendCancellableCoroutine { continuation ->
-            fun resumeOnce(result: Result<Unit>) {
+            fun resumeOnce(result: Result<Map<String, Any>>) {
                 if (continuation.isActive) {
                     continuation.resume(result)
                 }
@@ -118,78 +135,20 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Notify the Google Mobile Ads SDK of the GDPR applicability and consent status.
-     *
-     * @param context The current [Context].
-     * @param applies True if GDPR applies, false otherwise.
-     * @param gdprConsentStatus The user's GDPR consent status.
-     */
-    override fun setGdpr(
-        context: Context,
-        applies: Boolean?,
-        gdprConsentStatus: GdprConsentStatus,
-    ) {
-        PartnerLogController.log(
-            when (applies) {
-                true -> GDPR_APPLICABLE
-                false -> GDPR_NOT_APPLICABLE
-                else -> GDPR_UNKNOWN
-            },
-        )
-
-        PartnerLogController.log(
-            when (gdprConsentStatus) {
-                GdprConsentStatus.GDPR_CONSENT_UNKNOWN -> GDPR_CONSENT_UNKNOWN
-                GdprConsentStatus.GDPR_CONSENT_GRANTED -> GDPR_CONSENT_GRANTED
-                GdprConsentStatus.GDPR_CONSENT_DENIED -> GDPR_CONSENT_DENIED
-            },
-        )
-
-        this.gdprApplies = applies
-
-        if (applies == true) {
-            allowPersonalizedAds = gdprConsentStatus == GdprConsentStatus.GDPR_CONSENT_GRANTED
-        }
-    }
-
-    /**
-     * Save the current CCPA privacy String to be used later.
-     *
-     * @param context The current [Context].
-     * @param hasGrantedCcpaConsent True if the user has granted CCPA consent, false otherwise.
-     * @param privacyString The CCPA privacy String.
-     */
-    override fun setCcpaConsent(
-        context: Context,
-        hasGrantedCcpaConsent: Boolean,
-        privacyString: String,
-    ) {
-        PartnerLogController.log(
-            if (hasGrantedCcpaConsent) {
-                CCPA_CONSENT_GRANTED
-            } else {
-                CCPA_CONSENT_DENIED
-            },
-        )
-
-        ccpaPrivacyString = privacyString
-    }
-
-    /**
      * Notify Google Bidding of the COPPA subjectivity.
      *
      * @param context The current [Context].
-     * @param isSubjectToCoppa True if the user is subject to COPPA, false otherwise.
+     * @param isUserUnderage True if the user is subject to COPPA, false otherwise.
      */
-    override fun setUserSubjectToCoppa(
+    override fun setIsUserUnderage(
         context: Context,
-        isSubjectToCoppa: Boolean,
+        isUserUnderage: Boolean,
     ) {
         PartnerLogController.log(
-            if (isSubjectToCoppa) {
-                COPPA_SUBJECT
+            if (isUserUnderage) {
+                USER_IS_UNDERAGE
             } else {
-                COPPA_NOT_SUBJECT
+                USER_IS_NOT_UNDERAGE
             },
         )
 
@@ -198,7 +157,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
             MobileAds.setRequestConfiguration(
                 MobileAds.getRequestConfiguration().toBuilder()
                     .setTagForChildDirectedTreatment(
-                        if (isSubjectToCoppa) {
+                        if (isUserUnderage) {
                             RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_TRUE
                         } else {
                             RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_FALSE
@@ -212,14 +171,14 @@ class GoogleBiddingAdapter : PartnerAdapter {
      * Get a bid token if network bidding is supported.
      *
      * @param context The current [Context].
-     * @param request The [PreBidRequest] instance containing relevant data for the current bid request.
+     * @param request The [PartnerAdPreBidRequest] instance containing relevant data for the current bid request.
      *
      * @return A Map of biddable token Strings.
      */
     override suspend fun fetchBidderInformation(
         context: Context,
-        request: PreBidRequest,
-    ): Map<String, String> {
+        request: PartnerAdPreBidRequest,
+    ): Result<Map<String, String>> {
         PartnerLogController.log(BIDDER_INFO_FETCH_STARTED)
 
         // Google-defined specs for Chartboost Mediation
@@ -235,7 +194,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         val adFormat = getGoogleBiddingAdFormat(request.format)
 
         return suspendCancellableCoroutine { continuation ->
-            fun resumeOnce(result: Map<String, String>) {
+            fun resumeOnce(result: Result<Map<String, String>>) {
                 if (continuation.isActive) {
                     continuation.resume(result)
                 }
@@ -249,12 +208,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     object : QueryInfoGenerationCallback() {
                         override fun onSuccess(queryInfo: QueryInfo) {
                             PartnerLogController.log(BIDDER_INFO_FETCH_SUCCEEDED)
-                            resumeOnce(mapOf("token" to queryInfo.query))
+                            resumeOnce(Result.success(mapOf("token" to queryInfo.query)))
                         }
 
                         override fun onFailure(error: String) {
                             PartnerLogController.log(BIDDER_INFO_FETCH_FAILED, error)
-                            resumeOnce(emptyMap())
+                            resumeOnce(Result.success(emptyMap()))
                         }
                     },
                 )
@@ -278,36 +237,34 @@ class GoogleBiddingAdapter : PartnerAdapter {
     ): Result<PartnerAd> {
         PartnerLogController.log(LOAD_STARTED)
 
-        return when (request.format.key) {
-            AdFormat.INTERSTITIAL.key ->
+        return when (request.format) {
+            PartnerAdFormats.INTERSTITIAL ->
                 loadInterstitialAd(
                     context,
                     request,
                     partnerAdListener,
                 )
-            AdFormat.REWARDED.key ->
+            PartnerAdFormats.REWARDED ->
                 loadRewardedAd(
                     context,
                     request,
                     partnerAdListener,
                 )
-            AdFormat.BANNER.key, "adaptive_banner" ->
+            PartnerAdFormats.BANNER ->
                 loadBannerAd(
                     context,
                     request,
                     partnerAdListener,
                 )
+            PartnerAdFormats.REWARDED_INTERSTITIAL ->
+                loadRewardedInterstitialAd(
+                    context,
+                    request,
+                    partnerAdListener,
+                )
             else -> {
-                if (request.format.key == "rewarded_interstitial") {
-                    loadRewardedInterstitialAd(
-                        context,
-                        request,
-                        partnerAdListener,
-                    )
-                } else {
-                    PartnerLogController.log(LOAD_FAILED)
-                    Result.failure(ChartboostMediationAdException(ChartboostMediationError.LoadError.UnsupportedAdFormat))
-                }
+                PartnerLogController.log(LOAD_FAILED)
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.LoadError.UnsupportedAdFormat))
             }
         }
     }
@@ -327,21 +284,22 @@ class GoogleBiddingAdapter : PartnerAdapter {
         PartnerLogController.log(SHOW_STARTED)
         val listener = listeners.remove(partnerAd.request.identifier)
 
-        return when (partnerAd.request.format.key) {
+        return when (partnerAd.request.format) {
             // Banner ads do not have a separate "show" mechanism.
-            AdFormat.BANNER.key, "adaptive_banner" -> {
+            PartnerAdFormats.BANNER -> {
                 PartnerLogController.log(SHOW_SUCCEEDED)
                 Result.success(partnerAd)
             }
-            AdFormat.INTERSTITIAL.key -> showInterstitialAd(activity, partnerAd, listener)
-            AdFormat.REWARDED.key -> showRewardedAd(activity, partnerAd, listener)
+            PartnerAdFormats.INTERSTITIAL -> showInterstitialAd(activity, partnerAd, listener)
+            PartnerAdFormats.REWARDED -> showRewardedAd(activity, partnerAd, listener)
+            PartnerAdFormats.REWARDED_INTERSTITIAL -> showRewardedInterstitialAd(
+                activity,
+                partnerAd,
+                listener,
+            )
             else -> {
-                if (partnerAd.request.format.key == "rewarded_interstitial") {
-                    showRewardedInterstitialAd(activity, partnerAd, listener)
-                } else {
-                    PartnerLogController.log(SHOW_FAILED)
-                    Result.failure(ChartboostMediationAdException(ChartboostMediationError.ShowError.UnsupportedAdFormat))
-                }
+                PartnerLogController.log(SHOW_FAILED)
+                Result.failure(ChartboostMediationAdException(ChartboostMediationError.ShowError.UnsupportedAdFormat))
             }
         }
     }
@@ -358,13 +316,21 @@ class GoogleBiddingAdapter : PartnerAdapter {
         listeners.remove(partnerAd.request.identifier)
 
         // Only invalidate banners as there are no explicit methods to invalidate the other formats.
-        return when (partnerAd.request.format.key) {
-            AdFormat.BANNER.key, "adaptive_banner" -> destroyBannerAd(partnerAd)
+        return when (partnerAd.request.format) {
+            PartnerAdFormats.BANNER -> destroyBannerAd(partnerAd)
             else -> {
                 PartnerLogController.log(INVALIDATE_SUCCEEDED)
                 Result.success(partnerAd)
             }
         }
+    }
+
+    override fun setConsents(
+        context: Context,
+        consents: Map<ConsentKey, ConsentValue>,
+        modifiedKeys: Set<ConsentKey>
+    ) {
+        // Google Bidding reads the TCF String directly
     }
 
     /**
@@ -374,10 +340,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
      *
      * @return A [Result] object containing details about the initialization result.
      */
-    private fun getInitResult(status: AdapterStatus?): Result<Unit> {
+    private fun getInitResult(status: AdapterStatus?): Result<Map<String, Any>> {
         return status?.let { it ->
             if (it.initializationState == AdapterStatus.State.READY) {
-                Result.success(PartnerLogController.log(SETUP_SUCCEEDED))
+                PartnerLogController.log(SETUP_SUCCEEDED)
+                Result.success(emptyMap())
             } else {
                 PartnerLogController.log(
                     SETUP_FAILED,
@@ -426,23 +393,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                 val bannerAd = AdView(context)
-                val adSize = getGoogleBiddingAdSize(context, request.size, request.format.key == "adaptive_banner")
+                val isAdaptive = request.bannerSize?.type == BannerTypes.ADAPTIVE_BANNER
+                val adSize = getGoogleBiddingAdSize(context, request.bannerSize?.size, isAdaptive)
 
-                val details =
-                    if (request.format.key == "adaptive_banner") {
-                        mapOf(
-                            "banner_width_dips" to "${adSize.width}",
-                            "banner_height_dips" to "${adSize.height}",
-                        )
-                    } else {
-                        emptyMap()
-                    }
+                val partnerBannerSize = PartnerBannerSize(Size(adSize.width, adSize.height), if (isAdaptive) BannerTypes.ADAPTIVE_BANNER else BannerTypes.BANNER)
 
                 val partnerAd =
                     PartnerAd(
                         ad = bannerAd,
-                        details = details,
+                        details = emptyMap(),
                         request = request,
+                        partnerBannerSize = partnerBannerSize
                     )
 
                 bannerAd.setAdSize(adSize)
@@ -922,17 +883,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
     }
 
     /**
-     * Get the equivalent Google Bidding ad format for a given Chartboost Mediation [AdFormat].
+     * Get the equivalent Google Bidding ad format for a given Chartboost Mediation [PartnerAdFormat].
      *
-     * @param format The Chartboost Mediation [AdFormat] to convert.
+     * @param format The Chartboost Mediation [PartnerAdFormat] to convert.
      *
      * @return The equivalent Google Bidding ad format.
      */
-    private fun getGoogleBiddingAdFormat(format: AdFormat) =
-        when (format.key) {
-            AdFormat.BANNER.key, "adaptive_banner" -> com.google.android.gms.ads.AdFormat.BANNER
-            AdFormat.INTERSTITIAL.key -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
-            AdFormat.REWARDED.key -> com.google.android.gms.ads.AdFormat.REWARDED
+    private fun getGoogleBiddingAdFormat(format: PartnerAdFormat) =
+        when (format) {
+            PartnerAdFormats.BANNER -> com.google.android.gms.ads.AdFormat.BANNER
+            PartnerAdFormats.INTERSTITIAL -> com.google.android.gms.ads.AdFormat.INTERSTITIAL
+            PartnerAdFormats.REWARDED -> com.google.android.gms.ads.AdFormat.REWARDED
             else -> com.google.android.gms.ads.AdFormat.BANNER
         }
 
