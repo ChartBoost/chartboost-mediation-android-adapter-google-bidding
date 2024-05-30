@@ -3,6 +3,9 @@
 Note the first digit of every adapter version corresponds to the major version of the Chartboost Mediation SDK compatible with that adapter. 
 Adapters are compatible with any Chartboost Mediation SDK version within that major version.
 
+### 5.22.3.0.0
+- This version of the adapter supports Chartboost Mediation SDK version 5.+.
+
 ### 4.22.3.0.5
 - Fix memory leaks that could occur when fullscreen ads are shown from an `Activity`.
 
