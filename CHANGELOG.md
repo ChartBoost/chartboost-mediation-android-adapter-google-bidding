@@ -5,8 +5,6 @@ Adapters are compatible with any Chartboost Mediation SDK version within that ma
 
 ## 5.23.1.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 23.1.0.
-
-### 5.22.3.0.0
 - This version of the adapter supports Chartboost Mediation SDK version 5.+.
 
 ### 4.22.3.0.5
