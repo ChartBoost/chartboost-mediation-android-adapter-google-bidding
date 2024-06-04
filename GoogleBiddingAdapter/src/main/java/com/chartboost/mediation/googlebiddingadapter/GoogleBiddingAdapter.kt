@@ -294,11 +294,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
             }
             PartnerAdFormats.INTERSTITIAL -> showInterstitialAd(activity, partnerAd, listener)
             PartnerAdFormats.REWARDED -> showRewardedAd(activity, partnerAd, listener)
-            PartnerAdFormats.REWARDED_INTERSTITIAL -> showRewardedInterstitialAd(
-                activity,
-                partnerAd,
-                listener,
-            )
+            PartnerAdFormats.REWARDED_INTERSTITIAL ->
+                showRewardedInterstitialAd(
+                    activity,
+                    partnerAd,
+                    listener,
+                )
             else -> {
                 PartnerLogController.log(SHOW_FAILED)
                 Result.failure(ChartboostMediationAdException(ChartboostMediationError.ShowError.UnsupportedAdFormat))
@@ -330,7 +331,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override fun setConsents(
         context: Context,
         consents: Map<ConsentKey, ConsentValue>,
-        modifiedKeys: Set<ConsentKey>
+        modifiedKeys: Set<ConsentKey>,
     ) {
         // Google Bidding reads the TCF String directly
     }
@@ -398,14 +399,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
                 val isAdaptive = request.bannerSize?.type == BannerTypes.ADAPTIVE_BANNER
                 val adSize = getGoogleBiddingAdSize(context, request.bannerSize?.size, isAdaptive)
 
-                val partnerBannerSize = PartnerBannerSize(Size(adSize.width, adSize.height), if (isAdaptive) BannerTypes.ADAPTIVE_BANNER else BannerTypes.BANNER)
+                val partnerBannerSize =
+                    PartnerBannerSize(
+                        Size(adSize.width, adSize.height),
+                        if (isAdaptive) BannerTypes.ADAPTIVE_BANNER else BannerTypes.BANNER,
+                    )
 
                 val partnerAd =
                     PartnerAd(
                         ad = bannerAd,
                         details = emptyMap(),
                         request = request,
-                        partnerBannerSize = partnerBannerSize
+                        partnerBannerSize = partnerBannerSize,
                     )
 
                 bannerAd.setAdSize(adSize)
