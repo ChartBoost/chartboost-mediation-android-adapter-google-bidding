@@ -112,18 +112,16 @@ class GoogleBiddingAdapter : PartnerAdapter {
     override suspend fun setUp(
         context: Context,
         partnerConfiguration: PartnerConfiguration,
-    ): Result<Map<String, Any>> {
+    ): Result<Map<String, Any>> = withContext(IO) {
         PartnerLogController.log(SETUP_STARTED)
 
-        withContext(IO) {
-            // Since Chartboost Mediation is the mediator, no need to initialize AdMob's partner SDKs.
-            // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
-            //
-            // There have been known ANRs when calling disableMediationAdapterInitialization() on the main thread.
-            MobileAds.disableMediationAdapterInitialization(context)
-        }
+        // Since Chartboost Mediation is the mediator, no need to initialize AdMob's partner SDKs.
+        // https://developers.google.com/android/reference/com/google/android/gms/ads/MobileAds?hl=en#disableMediationAdapterInitialization(android.content.Context)
+        //
+        // There have been known ANRs when calling disableMediationAdapterInitialization() on the main thread.
+        MobileAds.disableMediationAdapterInitialization(context)
 
-        return suspendCancellableCoroutine { continuation ->
+        return@withContext suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<Map<String, Any>>) {
                 if (continuation.isActive) {
                     continuation.resume(result)
