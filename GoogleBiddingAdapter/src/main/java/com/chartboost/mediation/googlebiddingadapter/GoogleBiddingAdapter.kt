@@ -121,7 +121,7 @@ class GoogleBiddingAdapter : PartnerAdapter {
         // There have been known ANRs when calling disableMediationAdapterInitialization() on the main thread.
         MobileAds.disableMediationAdapterInitialization(context)
 
-        return@withContext suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine { continuation ->
             fun resumeOnce(result: Result<Map<String, Any>>) {
                 if (continuation.isActive) {
                     continuation.resume(result)
