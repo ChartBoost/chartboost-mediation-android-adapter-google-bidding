@@ -7,6 +7,9 @@ Adapters are compatible with any Chartboost Mediation SDK version within that ma
 - This version of the adapter has been certified with Google Mobile Ads SDK 23.1.0.
 - This version of the adapter supports Chartboost Mediation SDK version 5.+.
 
+### 4.22.3.0.6
+- Initialization of `MobileAds` SDK on the `IO` context.
+
 ### 4.22.3.0.5
 - Fix memory leaks that could occur when fullscreen ads are shown from an `Activity`.
 
