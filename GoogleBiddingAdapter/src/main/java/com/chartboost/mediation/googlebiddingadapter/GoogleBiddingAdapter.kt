@@ -23,6 +23,9 @@ import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerA
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_DISMISS
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_REWARD
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.DID_TRACK_IMPRESSION
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_DENIED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_GRANTED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.GDPR_CONSENT_UNKNOWN
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_FAILED
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_STARTED
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.INVALIDATE_SUCCEEDED
@@ -37,8 +40,12 @@ import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerA
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.SHOW_SUCCEEDED
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USER_IS_NOT_UNDERAGE
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USER_IS_UNDERAGE
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USP_CONSENT_DENIED
+import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.USP_CONSENT_GRANTED
 import com.chartboost.core.consent.ConsentKey
+import com.chartboost.core.consent.ConsentKeys
 import com.chartboost.core.consent.ConsentValue
+import com.chartboost.core.consent.ConsentValues
 import com.chartboost.mediation.googlebiddingadapter.GoogleBiddingAdapter.Companion.getChartboostMediationError
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.*
@@ -89,19 +96,19 @@ class GoogleBiddingAdapter : PartnerAdapter {
     private val listeners = mutableMapOf<String, PartnerAdListener>()
 
     /**
-     * Indicate whether GDPR currently applies to the user.
+     * Indicates whether the user has consented to allowing personalized ads when GDPR applies.
      */
-    private var gdprApplies: Boolean? = null
-
-    /**
-     * Indicate whether the user has consented to allowing personalized ads when GDPR applies.
-     */
-    private var allowPersonalizedAds = false
+    private var allowPersonalizedAds = true
 
     /**
      * Indicate whether the user has given consent per CCPA.
      */
     private var ccpaPrivacyString: String? = null
+
+    /**
+     * Indicates whether the user has restricted their data for advertising use.
+     */
+    private var restrictedDataProcessingEnabled = false
 
     /**
      * Initialize the Google Mobile Ads SDK so that it is ready to request ads.
@@ -331,7 +338,47 @@ class GoogleBiddingAdapter : PartnerAdapter {
         consents: Map<ConsentKey, ConsentValue>,
         modifiedKeys: Set<ConsentKey>,
     ) {
-        // Google Bidding reads the TCF String directly
+        val consent = consents[configuration.partnerId]?.takeIf { it.isNotBlank() }
+            ?: consents[ConsentKeys.GDPR_CONSENT_GIVEN]?.takeIf { it.isNotBlank() }
+        consent?.let {
+            when(it) {
+                ConsentValues.GRANTED -> {
+                    PartnerLogController.log(GDPR_CONSENT_GRANTED)
+                    allowPersonalizedAds = true
+                }
+
+                ConsentValues.DENIED -> {
+                    PartnerLogController.log(GDPR_CONSENT_DENIED)
+                    allowPersonalizedAds = false
+                }
+
+                else -> {
+                    PartnerLogController.log(GDPR_CONSENT_UNKNOWN)
+                }
+            }
+        }
+
+        consents[ConsentKeys.USP]?.let {
+            ccpaPrivacyString = it
+        }
+
+        consents[ConsentKeys.CCPA_OPT_IN]?.let {
+            when(it) {
+                ConsentValues.GRANTED -> {
+                    PartnerLogController.log(USP_CONSENT_GRANTED)
+                    restrictedDataProcessingEnabled = true
+                }
+
+                ConsentValues.DENIED -> {
+                    PartnerLogController.log(USP_CONSENT_DENIED)
+                    restrictedDataProcessingEnabled = false
+                }
+
+                else -> {
+                    PartnerLogController.log(CUSTOM, "Unable to set RDP since CCPA_OPT_IN is $it")
+                }
+            }
+        }
     }
 
     /**
@@ -923,8 +970,12 @@ class GoogleBiddingAdapter : PartnerAdapter {
      */
     private fun buildPrivacyConsents(): Bundle {
         return Bundle().apply {
-            if (gdprApplies == true && !allowPersonalizedAds) {
+            if (!allowPersonalizedAds) {
                 putString("npa", "1")
+            }
+
+            if (restrictedDataProcessingEnabled) {
+                putInt("rdp", 1)
             }
 
             if (!TextUtils.isEmpty(ccpaPrivacyString)) {
