@@ -470,7 +470,17 @@ class GoogleBiddingAdapter : PartnerAdapter {
 
                         override fun onAdLoaded() {
                             PartnerLogController.log(LOAD_SUCCEEDED)
-                            resumeOnce(Result.success(partnerAd))
+                            resumeOnce(Result.success(
+                                PartnerAd(
+                                    ad = bannerAd,
+                                    details = emptyMap(),
+                                    request = request,
+                                    partnerBannerSize = PartnerBannerSize(
+                                        Size(adSize.width, adSize.height),
+                                        request.bannerSize?.type ?: BannerTypes.BANNER,
+                                    )
+                                )
+                            ))
                         }
 
                         override fun onAdFailedToLoad(adError: LoadAdError) {
