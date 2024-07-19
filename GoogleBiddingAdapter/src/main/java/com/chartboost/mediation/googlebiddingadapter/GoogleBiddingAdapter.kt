@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.text.TextUtils
 import android.util.Size
 import android.view.View.GONE
+import com.chartboost.chartboostmediationsdk.ad.ChartboostMediationBannerAdView.ChartboostMediationBannerSize.Companion.asSize
 import com.chartboost.chartboostmediationsdk.domain.*
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController.PartnerAdapterEvents.BIDDER_INFO_FETCH_FAILED
@@ -48,7 +49,15 @@ import com.chartboost.core.consent.ConsentValue
 import com.chartboost.core.consent.ConsentValues
 import com.chartboost.mediation.googlebiddingadapter.GoogleBiddingAdapter.Companion.getChartboostMediationError
 import com.google.ads.mediation.admob.AdMobAdapter
-import com.google.android.gms.ads.*
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.initialization.AdapterStatus
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
@@ -58,9 +67,14 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import kotlin.coroutines.resume
 
@@ -441,8 +455,8 @@ class GoogleBiddingAdapter : PartnerAdapter {
                     }
 
                 val bannerAd = AdView(context)
-                val isAdaptive = request.bannerSize?.type == BannerTypes.ADAPTIVE_BANNER
-                val adSize = getGoogleBiddingAdSize(context, request.bannerSize?.size, isAdaptive)
+                val isAdaptive = request.bannerSize?.isAdaptive == true
+                val adSize = getGoogleBiddingAdSize(context, request.bannerSize?.asSize(), isAdaptive)
 
                 val partnerBannerSize =
                     PartnerBannerSize(
