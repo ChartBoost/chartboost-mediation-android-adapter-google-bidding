@@ -491,7 +491,11 @@ class GoogleBiddingAdapter : PartnerAdapter {
                                     request = request,
                                     partnerBannerSize = PartnerBannerSize(
                                         Size(adSize.width, adSize.height),
-                                        request.bannerSize?.type ?: BannerTypes.BANNER,
+                                        if (request.bannerSize?.isAdaptive == true) {
+                                            BannerTypes.ADAPTIVE_BANNER
+                                        } else {
+                                            BannerTypes.BANNER
+                                        },
                                     )
                                 )
                             ))
