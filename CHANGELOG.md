@@ -1,9 +1,15 @@
-## Changelog
+# Changelog
 
 Note the first digit of every adapter version corresponds to the major version of the Chartboost Mediation SDK compatible with that adapter. 
 Adapters are compatible with any Chartboost Mediation SDK version within that major version.
 
 All official releases can be found on this repository's [releases page](https://github.com/ChartBoost/chartboost-mediation-android-adapter-google-bidding/releases).
+
+## Table of Contents
+- [Mediation 5](#mediation-5)
+- [Mediation 4](#mediation-4)
+
+## Mediation 5
 
 ### 5.23.3.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 23.3.0.
@@ -11,6 +17,8 @@ All official releases can be found on this repository's [releases page](https://
 ### 5.23.2.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 23.2.0.
 - This version of the adapter supports Chartboost Mediation SDK version 5.+.
+
+## Mediation 4
 
 ### 4.23.2.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 23.2.0.
