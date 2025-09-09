@@ -1,6 +1,6 @@
 /*
- * Copyright 2022-2024 Chartboost, Inc.
- *
+ * Copyright 2022-2025 Chartboost, Inc.
+ * 
  * Use of this source code is governed by an MIT-style
  * license that can be found in the LICENSE file.
  */
@@ -38,7 +38,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
         // If you touch the following line, don't forget to update scripts/get_rc_version.zsh
         android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "5.24.4.0.0"
