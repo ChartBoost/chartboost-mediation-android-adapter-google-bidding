@@ -11,6 +11,9 @@ All official releases can be found on this repository's [releases page](https://
 
 ## Mediation 5
 
+### 5.24.4.0.0
+- This version of the adapter has been certified with Google Mobile Ads SDK 24.4.0.
+
 ### 5.24.3.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 24.3.0.
 
