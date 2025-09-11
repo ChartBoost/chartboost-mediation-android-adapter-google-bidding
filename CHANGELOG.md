@@ -14,6 +14,15 @@ All official releases can be found on this repository's [releases page](https://
 ### 5.24.6.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 24.6.0.
 
+### 5.24.5.0.0
+- This version of the adapter has been certified with Google Mobile Ads SDK 24.5.0.
+
+### 5.24.4.0.0
+- This version of the adapter has been certified with Google Mobile Ads SDK 24.4.0.
+
+### 5.24.3.0.0
+- This version of the adapter has been certified with Google Mobile Ads SDK 24.3.0.
+
 ### 5.24.2.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 24.2.0.
 
