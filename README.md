@@ -13,7 +13,7 @@ The Chartboost Mediation Google bidding adapter mediates Google bidding via the 
 
 In your `build.gradle`, add the following entry:
 ```
-    implementation "com.chartboost:chartboost-mediation-adapter-google-bidding:5.25.0.0.0"
+    implementation "com.chartboost:chartboost-mediation-adapter-google-bidding:5.25.1.0.0"
 ```
 
 ## Contributions
