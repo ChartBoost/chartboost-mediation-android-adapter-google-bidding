@@ -15,6 +15,9 @@ All official releases can be found on this repository's [releases page](https://
 - This version of the adapter has been certified with Google Mobile Ads SDK 25.3.0.
 - Requires Kotlin 2.3.
 
+### 5.25.2.0.0
+- This version of the adapter has been certified with Google Mobile Ads SDK 25.2.0.
+
 ### 5.25.1.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 25.1.0.
 
