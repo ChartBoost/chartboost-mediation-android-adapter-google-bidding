@@ -41,7 +41,7 @@ android {
         minSdk = 23
         targetSdk = 34
         // If you touch the following line, don't forget to update scripts/get_rc_version.zsh
-        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "5.25.2.0.0"
+        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "5.25.3.0.0"
         buildConfigField("String", "CHARTBOOST_MEDIATION_GOOGLE_BIDDING_ADAPTER_VERSION", "\"${android.defaultConfig.versionName}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -74,8 +74,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    publishing {
+        if (productFlavors.any { it.name == "remote" }) {
+            singleVariant("remoteRelease") {}
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -88,7 +96,7 @@ dependencies {
     "candidateImplementation"("com.chartboost:chartboost-mediation-sdk:5.0.0")
 
     // Partner SDK
-    implementation("com.google.android.gms:play-services-ads:25.2.0")
+    implementation("com.google.android.gms:play-services-ads:25.3.0")
 
     // Adapter Dependencies
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
