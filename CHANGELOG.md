@@ -11,6 +11,9 @@ All official releases can be found on this repository's [releases page](https://
 
 ## Mediation 5
 
+### 5.25.5.0.1
+- Fix the inverted CCPA opt-out mapping. Restricted data processing (`rdp=1`) is now sent when the user has opted out of sale (`CCPA_OPT_IN` denied) and not sent when they haven't. It was the other way around.
+
 ### 5.25.5.0.0
 - This version of the adapter has been certified with Google Mobile Ads SDK 25.5.0.
 

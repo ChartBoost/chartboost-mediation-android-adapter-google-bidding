@@ -41,7 +41,7 @@ android {
         minSdk = 23
         targetSdk = 34
         // If you touch the following line, don't forget to update scripts/get_rc_version.zsh
-        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "5.25.5.0.0"
+        android.defaultConfig.versionName = System.getenv("VERSION_OVERRIDE") ?: "5.25.5.0.1"
         buildConfigField("String", "CHARTBOOST_MEDIATION_GOOGLE_BIDDING_ADAPTER_VERSION", "\"${android.defaultConfig.versionName}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -67,6 +67,11 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+
+    testOptions {
+        // Stub Android APIs (e.g. android.util.Log) to defaults so JVM unit tests don't crash on them.
+        unitTests.isReturnDefaultValues = true
     }
 
     compileOptions {
@@ -100,6 +105,10 @@ dependencies {
 
     // Adapter Dependencies
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+
+    // Test Dependencies
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.10")
 }
 
 artifactory {

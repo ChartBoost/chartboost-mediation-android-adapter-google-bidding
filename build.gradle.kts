@@ -26,4 +26,5 @@ task<Delete>("clean") {
 task("ci") {
     dependsOn("clean")
     dependsOn(":GoogleBiddingAdapter:assembleRemote")
+    dependsOn(":GoogleBiddingAdapter:testRemoteDebugUnitTest")
 }
