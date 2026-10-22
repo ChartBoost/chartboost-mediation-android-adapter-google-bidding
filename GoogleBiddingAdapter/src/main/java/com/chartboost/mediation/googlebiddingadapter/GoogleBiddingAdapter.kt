@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.text.TextUtils
 import android.util.Size
 import android.view.View.GONE
+import androidx.annotation.VisibleForTesting
 import com.chartboost.chartboostmediationsdk.ad.ChartboostMediationBannerAdView.ChartboostMediationBannerSize.Companion.asSize
 import com.chartboost.chartboostmediationsdk.domain.*
 import com.chartboost.chartboostmediationsdk.utils.PartnerLogController
@@ -122,7 +123,9 @@ class GoogleBiddingAdapter : PartnerAdapter {
     /**
      * Indicates whether the user has restricted their data for advertising use.
      */
-    private var restrictedDataProcessingEnabled = false
+    @VisibleForTesting
+    internal var restrictedDataProcessingEnabled = false
+        private set
 
     /**
      * Initialize the Google Mobile Ads SDK so that it is ready to request ads.
@@ -376,16 +379,18 @@ class GoogleBiddingAdapter : PartnerAdapter {
             ccpaPrivacyString = it
         }
 
+        // CCPA_OPT_IN is GRANTED when the user has not opted out of sale and DENIED when they have,
+        // so restricted data processing is on only for DENIED.
         consents[ConsentKeys.CCPA_OPT_IN]?.let {
             when(it) {
                 ConsentValues.GRANTED -> {
                     PartnerLogController.log(USP_CONSENT_GRANTED)
-                    restrictedDataProcessingEnabled = true
+                    restrictedDataProcessingEnabled = false
                 }
 
                 ConsentValues.DENIED -> {
                     PartnerLogController.log(USP_CONSENT_DENIED)
-                    restrictedDataProcessingEnabled = false
+                    restrictedDataProcessingEnabled = true
                 }
 
                 else -> {
